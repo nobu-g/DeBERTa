@@ -7,6 +7,9 @@ license = "MIT"
 readme = "README.md" # This will not include dynamic git version info
 repository = "https://github.com/microsoft/DeBERTa"
 keywords = ["NLP", "deep learning", "transformer", "pytorch", "Attention", "BERT", "RoBERTa", "DeBERTa"]
+packages = [
+    { include = "DeBERTa", from = "." },
+]
 
 [tool.poetry.dependencies]
 python = "^3.9"
