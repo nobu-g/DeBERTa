@@ -3,29 +3,20 @@
 # Date: 01/25/2019
 #
 
-from glob import glob
-from collections import OrderedDict,defaultdict,Sequence
-from bisect import bisect
+from collections import OrderedDict, defaultdict
 import copy
-import math
-from scipy.special import softmax
 import numpy as np
-import pdb
 import os
-import sys
-import csv
 
 import random
 import torch
-import re
 import shutil
-import ujson as json
 from torch.utils.data import DataLoader
 from .metrics import *
 from .task import EvalData, Task
 from .task_registry import register_task
 from ...utils import xtqdm as tqdm
-from ...data import ExampleInstance, ExampleSet, DynamicDataset,example_to_feature
+from ...data import ExampleInstance, ExampleSet, DynamicDataset
 from ...data.example import _truncate_segments
 from ...data.example import *
 from ...deberta import NNModule
@@ -34,7 +25,7 @@ from ...training import DistributedTrainer, batch_to
 from ...data import DistributedBatchSampler, SequentialSampler, BatchSampler, AsyncDataLoader
 from ..models import MaskedLanguageModel,ReplacedTokenDetectionModel
 from .mlm_task import NGramMaskGenerator
-from .._utils import merge_distributed, join_chunks
+from .._utils import merge_distributed
 
 logger=get_logger()
 
@@ -90,7 +81,7 @@ class RTDModel(NNModule):
     topk = max(1, topk)
     next_tokens = torch.multinomial(top_p, topk)
     return next_tokens, top_p
-  
+
   def make_electra_data(self, input_data, temp=1, rand=None):
     new_data = input_data.copy()
     if rand is None:
@@ -102,7 +93,7 @@ class RTDModel(NNModule):
     mask_index = (lm_labels.view(-1)>0).nonzero().view(-1)
     gen_pred = torch.argmax(lm_logits, dim=1).detach().cpu().numpy()
     topk_labels, top_p = self.topk_sampling(lm_logits, topk=1, temp=temp)
-    
+
     top_ids = torch.zeros_like(lm_labels.view(-1))
     top_ids.scatter_(index=mask_index, src=topk_labels.view(-1).int(), dim=-1)
     top_ids = top_ids.view(lm_labels.size())
@@ -161,7 +152,7 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
     ds = [
         self._data('dev', 'valid.txt', 'dev'),
         ]
-   
+
     for d in ds:
       _size = len(d.data)
       d.data = DynamicDataset(d.data, feature_fn = self.get_feature_fn(max_seq_len=max_seq_len, mask_gen=self.mask_gen), dataset_size = _size, **kwargs)
@@ -169,7 +160,7 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
 
   def test_data(self, max_seq_len=512, **kwargs):
     """See base class."""
-    raise NotImplemented('This method is not implemented yet.')
+    raise NotImplementedError('This method is not implemented yet.')
 
   def _data(self, name, path, type_name = 'dev', ignore_metric=False):
     if isinstance(path, str):
@@ -225,7 +216,7 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
       position_ids = list(range(len(token_ids))),
       input_mask = [1]*len(token_ids),
       labels = lm_labels)
-    
+
     for f in features:
       features[f] = torch.tensor(features[f] + [0]*(max_seq_len - len(token_ids)), dtype=torch.int)
     return features
@@ -302,7 +293,7 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
           input_ids = batch['input_ids']
           nb_eval_examples += input_ids.size(0)
           nb_eval_steps += 1
-    
+
         eval_loss = eval_loss / nb_eval_steps
         predicts = merge_distributed(predicts)
         labels = merge_distributed(labels)
@@ -328,10 +319,10 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
 
   def get_decoupled_loss_fn(self, args, model, data_fn, device, num_training_steps):
     rand = random.Random(0)
-  
+
     def eval_fn(trainer, model, device, tag):
       return 0
-  
+
     def d_loss_fn(trainer, model, data):
       train_losses = OrderedDict()
       with_mlm_loss = True
@@ -339,7 +330,7 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
       rtd_loss = disc['loss']
       loss = args.rtd_lambda*rtd_loss.mean()
       return loss, data['input_ids'].size(0)
-  
+
     disc_args = copy.deepcopy(args)
     disc_args.checkpoint_dir = os.path.join(disc_args.output_dir, 'discriminator')
     os.makedirs(disc_args.checkpoint_dir, exist_ok=True)
@@ -350,7 +341,7 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
       disc_args.learning_rate = disc_args.discriminator_learning_rate
     disc_trainer = DistributedTrainer(disc_args, args.output_dir, model.discriminator, device, data_fn, loss_fn = d_loss_fn, eval_fn = eval_fn, dump_interval = args.dump_interval, name='D')
     disc_trainer.initialize()
-  
+
     def post_g_loss_fn(outputs):
       if outputs is None or len(outputs) == 0:
         return None
@@ -362,12 +353,12 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
       for k in new_data:
         new_data[k] = torch.cat(new_data[k], dim=0)
       disc_trainer._train_step(new_data, 1)
-  
+
     def g_loss_fn(trainer, _model, data):
       new_data, mlm_loss, gen_output = model.make_electra_data(data, rand=rand)
       trainer.post_loss_fn = post_g_loss_fn
       loss = mlm_loss.mean()
-  
+
       return {'loss': loss.mean(),
           'batch_size': data['input_ids'].size(0),
           'new_data': new_data}

@@ -6,10 +6,7 @@
 # Date: 05/15/2019
 #
 
-import os
 import numpy as np
-import math
-import sys
 from torch.utils.data import Sampler
 
 __all__=['BatchSampler', 'DistributedBatchSampler', 'RandomSampler', 'SequentialSampler']

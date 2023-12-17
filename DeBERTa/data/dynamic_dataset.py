@@ -7,12 +7,10 @@
 # Date: 05/15/2019
 #
 
-import pdb
 from torch.utils.data import Dataset
 import random
 import mmap
 import numpy as np
-from bisect import bisect
 from ..utils import get_logger
 logger=get_logger()
 
@@ -32,7 +30,7 @@ class DynamicDataset(Dataset):
 
     self.shuffle = shuffle
     index_buf = mmap.mmap(-1, self.dataset_size*8)
-    shuffle_idx = np.ndarray(shape=(self.dataset_size, ), buffer=index_buf, dtype=np.int)
+    shuffle_idx = np.ndarray(shape=(self.dataset_size, ), buffer=index_buf, dtype=int)
     shuffle_idx[:] = np.arange(self.dataset_size)[:]
     if self.shuffle:
       #rng = np.random.RandomState(0)
@@ -52,9 +50,10 @@ class DynamicDataset(Dataset):
     else:
       ext_params = None
     idx += self.index_offset
+    idx = int(idx)
     seed = idx
     rng = random.Random(seed)
     # get seq length
-    example_idx = self.shuffle_idx[idx%self.dataset_size]%self.ds_len
+    example_idx = self.shuffle_idx[idx % self.dataset_size] % self.ds_len
     example = self.corpus[example_idx, rng, ext_params]
     return self.feature_fn(example, rng, ext_params = ext_params)

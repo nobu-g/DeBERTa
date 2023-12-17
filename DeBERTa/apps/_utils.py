@@ -1,6 +1,5 @@
 import torch
-from collections import OrderedDict
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 
 def merge_distributed(data_list, max_len=None):
   if torch.distributed.is_initialized() and torch.distributed.get_world_size()>1:

@@ -10,15 +10,12 @@
 """
 
 from collections import defaultdict
-import numpy as np
 import math
 import torch
-import pdb
 import torch.distributed as dist
 from torch._utils import _flatten_dense_tensors, _unflatten_dense_tensors
-import ctypes
 
-from ..utils import get_logger,boolean_string
+from ..utils import get_logger
 logger=get_logger()
 
 __all__ = ['Fp16Optimizer', 'ExpLossScaler', 'get_world_size']

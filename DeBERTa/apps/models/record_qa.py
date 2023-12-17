@@ -13,7 +13,7 @@ from __future__ import print_function
 
 import math
 import torch
-from torch.nn import CrossEntropyLoss,BCEWithLogitsLoss
+from torch.nn import BCEWithLogitsLoss
 from ...deberta import *
 from ...utils import *
 

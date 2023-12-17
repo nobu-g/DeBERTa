@@ -9,11 +9,9 @@
 
 
 import sentencepiece as sp
-import six
 import unicodedata
 import os
 import regex as re
-from .cache_utils import load_vocab
 from ..utils import get_logger
 logger=get_logger()
 
@@ -206,7 +204,7 @@ class SPMTokenizer:
       i += 1
 
     return ["".join(x) for x in output]
-  
+
   def _tokenize_chinese_chars(self, text):
     """Adds whitespace around any CJK character."""
     output = []
@@ -239,9 +237,9 @@ class SPMTokenizer:
       (cp >= 0xF900 and cp <= 0xFAFF) or  #
       (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
       return True
-  
+
     return False
-  
+
   def _clean_text(self, text):
     """Performs invalid character removal and whitespace cleanup on text."""
     output = []
@@ -302,21 +300,10 @@ def whitespace_tokenize(text):
     return tokens
 
 def convert_to_unicode(text):
-  """Converts `text` to Unicode (if it's not already), assuming utf-8 input."""
-  if six.PY3:
+    """Converts `text` to Unicode (if it's not already), assuming utf-8 input."""
     if isinstance(text, str):
-      return text
+        return text
     elif isinstance(text, bytes):
-      return text.decode("utf-8", "ignore")
+        return text.decode("utf-8", "ignore")
     else:
-      raise ValueError("Unsupported string type: %s" % (type(text)))
-  elif six.PY2:
-    if isinstance(text, str):
-      return text.decode("utf-8", "ignore")
-    elif isinstance(text, unicode):
-      return text
-    else:
-      raise ValueError("Unsupported string type: %s" % (type(text)))
-  else:
-    raise ValueError("Not running on Python2 or Python 3?")
-
+        raise ValueError("Unsupported string type: %s" % (type(text)))

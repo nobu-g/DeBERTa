@@ -3,17 +3,8 @@
 # Date: 01/25/2019
 #
 
-from glob import glob
-from collections import OrderedDict,defaultdict
-from collections.abc import Sequence
-import copy
-import math
-from scipy.special import softmax
-import numpy as np
-import pdb
+from collections import OrderedDict
 import os
-import sys
-import csv
 
 import random
 import torch
@@ -21,8 +12,7 @@ import re
 import ujson as json
 from DeBERTa.apps.tasks.metrics import *
 from DeBERTa.apps.tasks import EvalData, Task,register_task
-from DeBERTa.utils import xtqdm as tqdm
-from DeBERTa.data import ExampleInstance, ExampleSet, DynamicDataset,example_to_feature
+from DeBERTa.data import ExampleInstance, ExampleSet, DynamicDataset
 from DeBERTa.data.example import *
 from DeBERTa.utils import get_logger
 from DeBERTa.data.example import _truncate_segments

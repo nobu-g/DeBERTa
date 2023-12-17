@@ -1,20 +1,15 @@
 
-from collections import OrderedDict,defaultdict,Counter
-from collections.abc import Sequence
-import math
+from collections import OrderedDict
 import numpy as np
 import os
 import pdb
 import random
 import torch
-import ujson as json
-from ...utils import xtqdm as tqdm
 from ...utils import get_logger
 
 from ..models import NERModel
 from ...data import ExampleInstance, ExampleSet, DynamicDataset
 from ...data.example import *
-from ...data.example import _truncate_segments
 from .task import EvalData, Task
 from .task_registry import register_task
 

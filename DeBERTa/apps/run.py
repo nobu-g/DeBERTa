@@ -13,26 +13,22 @@ import os
 os.environ["OMP_NUM_THREADS"] = "1"
 from ..deberta import tokenizers,load_vocab
 from collections import OrderedDict
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 import argparse
 import random
-import time
 
 import numpy as np
-import math
 import torch
-import json
 import shutil
 from torch.utils.data import DataLoader
 from ..utils import *
 from ..utils import xtqdm as tqdm
 from ..sift import AdversarialLearner,hook_sift_layer
 from .tasks import load_tasks,get_task
-from ._utils import merge_distributed, join_chunks
+from ._utils import merge_distributed
 
-import pdb
 
-from ..training import DistributedTrainer, initialize_distributed, batch_to, set_random_seed,kill_children
+from ..training import DistributedTrainer, initialize_distributed, batch_to, kill_children
 from ..data import DistributedBatchSampler, SequentialSampler, BatchSampler, AsyncDataLoader
 from ..training import get_args as get_training_args
 from ..optims import get_args as get_optims_args
@@ -155,7 +151,7 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
   device = torch.device('cpu') if device is None else device
   if args.export_onnx_model:
     import onnxruntime as ort
-    from onnxruntime.quantization import quantize_dynamic, QuantType
+    from onnxruntime.quantization import quantize_dynamic
     if args.fp16:
       ort_model = os.path.join(args.output_dir, f'{prefix}_onnx_fp16.bin')
       ort_model_qt = None
@@ -473,9 +469,9 @@ if __name__ == "__main__":
   logger.info(args)
   try:
     main(args)
-  except Exception as ex:
+  except Exception:
     try:
-      logger.exception(f'Uncatched exception happened during execution.')
+      logger.exception('Uncatched exception happened during execution.')
       import atexit
       atexit._run_exitfuncs()
     except:

@@ -2,9 +2,6 @@
 """
 
 import math
-import torch
-from torch.optim import Optimizer
-from torch.nn.utils import clip_grad_norm_
 
 def warmup_cosine(step, total, warmup=0.002, ends = 0):
     x = step/total

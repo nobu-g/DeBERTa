@@ -7,7 +7,6 @@
 #
 
 import argparse
-from ..utils import boolean_string
 
 __all__ = ['get_args']
 

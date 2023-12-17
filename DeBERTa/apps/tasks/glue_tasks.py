@@ -7,29 +7,16 @@
 # Date: 01/25/2019
 #
 
-from glob import glob
 from collections import OrderedDict,defaultdict
-from collections.abc import Sequence
-import copy
-import math
 from scipy.special import softmax
 import numpy as np
-import pdb
 import os
-import sys
-import csv
 
-import random
-import torch
-import re
-import ujson as json
 from .metrics import *
 from .task import EvalData, Task
 from .task_registry import register_task
-from ...utils import xtqdm as tqdm
 from ...utils import get_logger
 from ...data import ExampleInstance, ExampleSet, DynamicDataset,example_to_feature
-from ...data.example import _truncate_segments
 from ...data.example import *
 
 logger=get_logger()

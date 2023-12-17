@@ -6,7 +6,7 @@
 # Date: 05/15/2019
 #
 
-from queue import Queue,Empty
+from queue import Queue
 from threading import Thread
 class AsyncDataLoader(object):
   def __init__(self, dataloader, buffer_size=100):

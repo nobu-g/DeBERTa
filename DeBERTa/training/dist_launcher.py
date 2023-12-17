@@ -7,13 +7,9 @@
 #
 
 import os
-import time
-import pdb
 import signal
 import torch
-from multiprocessing import Process,Pool
-from collections import defaultdict
-import sys
+from multiprocessing import Pool
 import psutil
 from ..utils import set_logger, get_logger
 logger = get_logger()

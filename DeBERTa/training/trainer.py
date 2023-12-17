@@ -11,11 +11,9 @@ import torch
 import random
 import time
 import numpy as np
-import pdb
 from collections import defaultdict, OrderedDict
-from collections.abc import Mapping, Sequence
 from torch.utils.data import DataLoader
-from ..data import BatchSampler, DistributedBatchSampler,RandomSampler,SequentialSampler, AsyncDataLoader
+from ..data import BatchSampler, DistributedBatchSampler,RandomSampler,AsyncDataLoader
 from ..utils import get_logger
 logger = get_logger()
 

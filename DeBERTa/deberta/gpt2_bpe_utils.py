@@ -6,7 +6,6 @@ Original license: MIT
 """
 
 from functools import lru_cache
-import json
 import random
 import unicodedata
 

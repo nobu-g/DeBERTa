@@ -5,8 +5,6 @@ Logging util
 
 __all__ = ['get_logger', 'set_logger']
 import logging
-import os
-import pdb
 
 logging.basicConfig(format = '%(asctime)s|%(levelname)s|%(name)s| %(message)s',
                     datefmt = '%m%d%Y %H:%M:%S',
@@ -24,7 +22,7 @@ def set_logger(name, file_log=None, rank=0, verbose=1):
     if rank >= 0:
       formatter = logging.Formatter(f'%(asctime)s|%(levelname)s|%(name)s|{rank:02}| %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
     else:
-      formatter = logging.Formatter(f'%(asctime)s|%(levelname)s|%(name)s| %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
+      formatter = logging.Formatter('%(asctime)s|%(levelname)s|%(name)s| %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
     if file_log:
         fh = logging.FileHandler(file_log)
         fh.setLevel(logging.DEBUG)

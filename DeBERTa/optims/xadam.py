@@ -12,11 +12,7 @@
 import math
 import torch
 from torch.optim import Optimizer
-from torch.nn.utils import clip_grad_norm_
-from torch import distributed as dist
-import pdb
 from .lr_schedulers import SCHEDULES
-from ..utils import get_logger
 
 def adamw(data,
     out_data,
@@ -38,8 +34,8 @@ def adamw(data,
   beta2_ = 1 - beta2
   grad = grad.float()
   if grad_scale != 1:
-    grad *= 1/grad_scale
-  next_m.mul_(beta1).add_(beta1_, grad)
+    grad *= 1 / grad_scale
+  next_m.mul_(beta1).add_(grad, alpha=beta1_)
   # admax
   admax = eps_mode>>4
   eps_mode = eps_mode&0xF
@@ -183,7 +179,7 @@ class XAdam(Optimizer):
       out_p = param.out_data if hasattr(param, 'out_data') and (param.out_data is not None) else None
       if out_p is None or out_p.dtype != grad.dtype:
         out_p = torch.tensor([], dtype=torch.float).to(param.data)
-      
+
       weight_decay = group['weight_decay_rate']
       adamw(param.data,
                     out_p,

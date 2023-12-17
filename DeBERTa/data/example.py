@@ -1,16 +1,9 @@
 import torch
-import os
 from collections import OrderedDict
 import numpy as np
-import tempfile
 import numpy as np
-import mmap
 import pickle
-import signal
-import sys
-import pdb
 
-from ..utils import xtqdm as tqdm
 
 __all__=['ExampleInstance', 'example_to_feature', 'ExampleSet']
 

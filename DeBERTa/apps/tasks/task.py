@@ -5,12 +5,9 @@
 
 import os
 import csv
-import copy
-from collections import OrderedDict,defaultdict,Counter
-from collections.abc import Sequence
+from collections import OrderedDict
 import numpy as np
 from ...utils import get_logger
-from ...utils import xtqdm as tqdm
 from ...data import example_to_feature
 from .metrics import *
 

@@ -1,4 +1,3 @@
-import random
 import torch
 import torch.multiprocessing as multiprocessing
 from torch._C import _set_worker_signal_handlers, \
@@ -11,17 +10,14 @@ if version.Version(torch.__version__) >= version.Version('1.0.0'):
 else:
     from torch._C import _update_worker_pids as _set_worker_pids
 
-from torch.utils.data import SequentialSampler, RandomSampler, BatchSampler, Sampler
+from torch.utils.data import SequentialSampler, RandomSampler, BatchSampler
 import signal
-import functools
 import collections.abc
 import re
 import sys
 import threading
 import traceback
 import os
-import time
-from torch._six import string_classes
 
 IS_WINDOWS = sys.platform == "win32"
 if IS_WINDOWS:
@@ -185,7 +181,7 @@ def default_collate(batch):
         return torch.LongTensor(batch)
     elif isinstance(batch[0], float):
         return torch.DoubleTensor(batch)
-    elif isinstance(batch[0], string_classes):
+    elif isinstance(batch[0], str):
         return batch
     elif isinstance(batch[0], collections.abc.Mapping):
         return {key: default_collate([d[key] for d in batch]) for key in batch[0]}
@@ -199,7 +195,7 @@ def default_collate(batch):
 def pin_memory_batch(batch):
     if isinstance(batch, torch.Tensor):
         return batch.pin_memory()
-    elif isinstance(batch, string_classes):
+    elif isinstance(batch, str):
         return batch
     elif isinstance(batch, collections.abc.Mapping):
         return {k: pin_memory_batch(sample) for k, sample in batch.items()}
@@ -407,7 +403,7 @@ class SequentialDataLoader(object):
     r"""
     Sequential Data loader. Combines a dataset and a sampler, and provides
     single- or multi-process iterators over the dataset.
-    This is modified from Pytorch.DataLoader by disable random state touch as for sequential data loading, 
+    This is modified from Pytorch.DataLoader by disable random state touch as for sequential data loading,
     we don't want it to touch any random state.
     Arguments:
         dataset (Dataset): dataset from which to load the data.

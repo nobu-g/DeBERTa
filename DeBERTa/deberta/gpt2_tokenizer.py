@@ -11,10 +11,7 @@
 # This piece of code is derived from https://github.com/pytorch/fairseq/blob/master/fairseq/data/encoders/gpt2_bpe.py
 
 import torch
-import unicodedata
-import os
 from .gpt2_bpe_utils import get_encoder,_is_control,_is_whitespace,_is_punctuation
-from .cache_utils import load_vocab
 
 __all__ = ['GPT2Tokenizer']
 

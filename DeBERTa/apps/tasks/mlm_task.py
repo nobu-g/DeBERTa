@@ -3,36 +3,27 @@
 # Date: 01/25/2019
 #
 
-from glob import glob
-from collections import OrderedDict,defaultdict
-from collections.abc import Sequence
+from collections import OrderedDict
 from bisect import bisect
-import copy
 import math
-from scipy.special import softmax
 import numpy as np
-import pdb
 import os
-import sys
-import csv
 
 import random
 import torch
-import re
-import ujson as json
 from torch.utils.data import DataLoader
 from .metrics import *
 from .task import EvalData, Task
 from .task_registry import register_task
 from ...utils import xtqdm as tqdm
-from ...training import DistributedTrainer, batch_to
+from ...training import batch_to
 from ...data import DistributedBatchSampler, SequentialSampler, BatchSampler, AsyncDataLoader
-from ...data import ExampleInstance, ExampleSet, DynamicDataset,example_to_feature
+from ...data import ExampleInstance, ExampleSet, DynamicDataset
 from ...data.example import _truncate_segments
 from ...data.example import *
 from ...utils import get_logger
 from ..models import MaskedLanguageModel
-from .._utils import merge_distributed, join_chunks
+from .._utils import merge_distributed
 
 logger=get_logger()
 
@@ -60,7 +51,7 @@ class NGramMaskGenerator:
   def mask_tokens(self, tokens, rng, **kwargs):
     special_tokens = ['[MASK]', '[CLS]', '[SEP]', '[PAD]', '[UNK]'] # + self.tokenizer.tokenize(' ')
     indices = [i for i in range(len(tokens)) if tokens[i] not in special_tokens]
-    ngrams = np.arange(1, self.max_gram + 1, dtype=np.int64)
+    ngrams = np.arange(1, self.max_gram + 1, dtype=int)
     pvals = 1. / np.arange(1, self.max_gram + 1)
     pvals /= pvals.sum(keepdims=True)
 
@@ -70,7 +61,7 @@ class NGramMaskGenerator:
         unigrams[-1].append(id)
       else:
         unigrams.append([id])
-    
+
     num_to_predict = min(self.max_preds_per_seq, max(1, int(round(len(tokens) * self.mask_lm_prob))))
     mask_len = 0
     offset = 0
@@ -143,7 +134,7 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
     ds = [
         self._data('dev', 'valid.txt', 'dev'),
         ]
-   
+
     for d in ds:
       _size = len(d.data)
       d.data = DynamicDataset(d.data, feature_fn = self.get_feature_fn(max_seq_len=max_seq_len, mask_gen=self.mask_gen), dataset_size = _size, **kwargs)
@@ -151,7 +142,7 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
 
   def test_data(self, max_seq_len=512, **kwargs):
     """See base class."""
-    raise NotImplemented('This method is not implemented yet.')
+    raise NotImplementedError('This method is not implemented yet.')
 
   def _data(self, name, path, type_name = 'dev', ignore_metric=False):
     if isinstance(path, str):
@@ -207,7 +198,7 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
       position_ids = list(range(len(token_ids))),
       input_mask = [1]*len(token_ids),
       labels = lm_labels)
-    
+
     for f in features:
       features[f] = torch.tensor(features[f] + [0]*(max_seq_len - len(token_ids)), dtype=torch.int)
     return features
@@ -246,7 +237,7 @@ dataset_size = dataset_size, shuffle=True, **kwargs)
           input_ids = batch['input_ids']
           nb_eval_examples += input_ids.size(0)
           nb_eval_steps += 1
-    
+
         eval_loss = eval_loss / nb_eval_steps
         predicts = merge_distributed(predicts)
         labels = merge_distributed(labels)

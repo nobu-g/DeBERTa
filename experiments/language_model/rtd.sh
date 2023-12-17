@@ -1,4 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -eo pipefail
+
 SCRIPT=$(readlink -f "$0")
 SCRIPT_DIR=$(dirname "$SCRIPT")
 cd $SCRIPT_DIR
@@ -8,7 +11,7 @@ cache_dir=/tmp/DeBERTa/RTD/
 max_seq_length=512
 data_dir=$cache_dir/wiki103/spm_$max_seq_length
 
-function setup_wiki_data(){
+setup_wiki_data(){
 	task=$1
 	mkdir -p $cache_dir
 	if [[ ! -e  $cache_dir/spm.model ]]; then
@@ -27,7 +30,7 @@ function setup_wiki_data(){
 
 setup_wiki_data
 
-Task=RTD
+task=RTD
 
 init=$1
 tag=$init
@@ -103,7 +106,7 @@ python -m DeBERTa.apps.run --model_config config.json  \
 	--num_training_steps 1000000 \
 	--max_seq_len $max_seq_length \
 	--dump 10000 \
-	--task_name $Task \
+	--task_name "${task}" \
 	--data_dir $data_dir \
 	--vocab_path $cache_dir/spm.model \
 	--vocab_type spm \

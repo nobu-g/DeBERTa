@@ -10,7 +10,6 @@
 from glob import glob
 import os
 import importlib
-import pdb
 import sys
 from ...utils import get_logger
 from .task import Task
@@ -33,7 +32,7 @@ def register_task(name=None, desc=None):
     _name = _name.lower()
     if _name in tasks:
       logger.warning(f'{_name} already registered in the registry: {tasks[_name]}.')
-    assert issubclass(cls, Task), f'Registered class must be a subclass of Task.'
+    assert issubclass(cls, Task), 'Registered class must be a subclass of Task.'
     tasks[_name] = cls
     cls._meta = {
         'name': _name,

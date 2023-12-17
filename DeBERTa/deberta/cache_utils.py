@@ -7,14 +7,12 @@
 # Date: 05/15/2020
 #
 
-import pdb
 import torch
 import os
 import requests
 from .config import ModelConfig
 import pathlib
 from ..utils import xtqdm as tqdm
-from zipfile import ZipFile
 from ..utils import get_logger
 logger = get_logger()
 
@@ -29,7 +27,7 @@ class PretrainedModel:
     self.config_url = host + config
     self.vocab_url = host + vocab
     self.vocab_type = vocab_type
-  
+
 pretrained_models= {
     'base': PretrainedModel('deberta-base', 'bpe_encoder.bin', 'gpt2'),
     'large': PretrainedModel('deberta-large', 'bpe_encoder.bin', 'gpt2'),
@@ -65,7 +63,7 @@ def download_asset(url, name, tag=None, no_cache=False, cache_dir=None):
   resp = requests.get(url, stream=True, headers=headers)
   if resp.status_code != 200:
     raise Exception(f'Request for {url} return {resp.status_code}, {resp.text}')
-  
+
   try:
     with open(output, 'wb') as fs:
       progress = tqdm(total=int(resp.headers['Content-Length']) if 'Content-Length' in resp.headers else -1, ncols=80, desc=f'Downloading {name}')
