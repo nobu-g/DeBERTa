@@ -9,6 +9,7 @@
 
 
 import os
+import pdb
 import unicodedata
 
 import regex as re
@@ -16,12 +17,9 @@ import sentencepiece as sp
 
 from ..utils import get_logger
 
-logger = get_logger()
-
-
-import pdb
-
 __all__ = ["SPMTokenizer"]
+
+logger = get_logger()
 
 
 class SPMTokenizer:

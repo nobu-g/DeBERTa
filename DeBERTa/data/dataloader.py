@@ -1,3 +1,12 @@
+import collections.abc
+import os
+import queue
+import re
+import signal
+import sys
+import threading
+import traceback
+
 import torch
 from packaging import version
 from torch import multiprocessing
@@ -6,28 +15,19 @@ from torch._C import (
     _remove_worker_pids,
     _set_worker_signal_handlers,
 )
+from torch.utils.data import BatchSampler, RandomSampler, SequentialSampler
 
 if version.Version(torch.__version__) >= version.Version("1.0.0"):
     from torch._C import _set_worker_pids
 else:
     from torch._C import _update_worker_pids as _set_worker_pids
 
-import collections.abc
-import os
-import re
-import signal
-import sys
-import threading
-import traceback
-
-from torch.utils.data import BatchSampler, RandomSampler, SequentialSampler
 
 IS_WINDOWS = sys.platform == "win32"
 if IS_WINDOWS:
     import ctypes
     from ctypes.wintypes import BOOL, DWORD, HANDLE
 
-import queue
 
 __all__ = ["SequentialDataLoader"]
 
@@ -40,8 +40,8 @@ class ExceptionWrapper:
         self.exc_msg = "".join(traceback.format_exception(*exc_info))
 
 
+# Whether to use shared memory in default_collate
 _use_shared_memory = False
-r"""Whether to use shared memory in default_collate"""
 
 MANAGER_STATUS_CHECK_INTERVAL = 5.0
 
@@ -206,9 +206,9 @@ def pin_memory_batch(batch):
         return batch
 
 
+# Whether SIGCHLD handler is set for DataLoader worker failures. Only one
+# handler needs to be set for all DataLoaders in a process.
 _SIGCHLD_handler_set = False
-r"""Whether SIGCHLD handler is set for DataLoader worker failures. Only one
-handler needs to be set for all DataLoaders in a process."""
 
 
 def _set_SIGCHLD_handler():

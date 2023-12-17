@@ -17,14 +17,13 @@ from torch.utils.data import DataLoader
 
 from ..data import AsyncDataLoader, BatchSampler, DistributedBatchSampler, RandomSampler
 from ..utils import get_logger
-
-logger = get_logger()
-
 from ._utils import batch_to
 from .dist_launcher import get_ngpu
 from .optimizer_utils import create_xoptimizer
 
 __all__ = ["DistributedTrainer", "set_random_seed"]
+
+logger = get_logger()
 
 
 def set_random_seed(seed, cpu_only=False):

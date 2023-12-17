@@ -109,7 +109,7 @@ class AlphaNLITask(Task):
             preds = np.argmax(probs, axis=-1)
             labels = ["1", "2"]
             with open(output, "w", encoding="utf-8") as fs:
-                for i, p in enumerate(preds):
+                for p in preds:
                     fs.write(labels[p] + "\n")
 
         return predict_fn

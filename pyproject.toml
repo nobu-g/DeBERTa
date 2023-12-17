@@ -65,10 +65,16 @@ ignore = [
     "F403",
     "F405",
     "F841",
+    "F821",
     "E741",
     "E722",
+    "B904",
+    "B020",
+    "B023",
+    "PLW2901",
+    "PLW0603",
 ]
-select = ["F", "E", "W", "I", "B", "PL", "PD", "RUF", "UP", "COM", "PT", "PYI"]
+select = ["F", "E", "W", "I", "B", "PL", "UP", "COM", "PT", "PYI"]
 
 
 [build-system]
