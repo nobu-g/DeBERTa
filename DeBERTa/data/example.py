@@ -1,9 +1,8 @@
-import torch
-from collections import OrderedDict
-import numpy as np
-import numpy as np
 import pickle
+from collections import OrderedDict
 
+import numpy as np
+import torch
 
 __all__ = ["ExampleInstance", "example_to_feature", "ExampleSet"]
 
@@ -30,9 +29,7 @@ class ExampleSet:
         self.total = len(self._data)
 
     def __getitem__(self, idx):
-        """
-        return pair
-        """
+        """return pair"""
         if isinstance(idx, tuple):
             idx, rng, ext_params = idx
         else:
@@ -50,8 +47,7 @@ class ExampleSet:
 
 
 def _truncate_segments(segments, max_num_tokens, rng):
-    """
-    Truncate sequence pair according to original BERT implementation:
+    """Truncate sequence pair according to original BERT implementation:
     https://github.com/google-research/bert/blob/master/create_pretraining_data.py#L391
     """
     while True:
@@ -83,9 +79,7 @@ def example_to_feature(
     if not rng:
         rng = random
     max_num_tokens = max_seq_len - len(example.segments) - 1
-    segments = _truncate_segments(
-        [tokenizer.tokenize(s) for s in example.segments], max_num_tokens, rng
-    )
+    segments = _truncate_segments([tokenizer.tokenize(s) for s in example.segments], max_num_tokens, rng)
     tokens = ["[CLS]"]
     type_ids = [0]
     for i, s in enumerate(segments):

@@ -1,5 +1,6 @@
+from collections.abc import Mapping, Sequence
+
 import torch
-from collections.abc import Sequence, Mapping
 
 
 def batch_apply(batch, fn):
@@ -10,9 +11,7 @@ def batch_apply(batch, fn):
     elif isinstance(batch, Mapping):
         return {x: batch_apply(batch[x], fn) for x in batch}
     else:
-        raise NotImplementedError(
-            f"Type of {type(batch)} are not supported in batch_apply"
-        )
+        raise NotImplementedError(f"Type of {type(batch)} are not supported in batch_apply")
 
 
 def batch_to(batch, device):

@@ -1,17 +1,13 @@
-import numpy as np
-from sklearn.metrics import matthews_corrcoef
-from sklearn.metrics import accuracy_score, f1_score
 from statistics import *
+
+import numpy as np
 from scipy.special import softmax
+from sklearn.metrics import accuracy_score, f1_score, matthews_corrcoef
 
 
 def metric_multi_accuracy(logits, labels, options_num):
-    logits = np.reshape(
-        softmax(logits, -1)[:, 1], (len(logits) // options_num, options_num)
-    )
-    labels = np.argmax(
-        np.reshape(labels, (len(labels) // options_num, options_num)), -1
-    )
+    logits = np.reshape(softmax(logits, -1)[:, 1], (len(logits) // options_num, options_num))
+    labels = np.argmax(np.reshape(labels, (len(labels) // options_num, options_num)), -1)
     return metric_accuracy(logits, labels)
 
 

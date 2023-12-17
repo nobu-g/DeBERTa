@@ -2,14 +2,14 @@
 # Author: penhe@microsoft.com
 # Date: 01/25/2019
 #
-"""
-Pooling functions
+"""Pooling functions
 """
 
 from torch import nn
+
 from .bert import ACT2FN
-from .ops import StableDropout
 from .config import AbsModelConfig
+from .ops import StableDropout
 
 __all__ = ["PoolConfig", "ContextPooler"]
 
@@ -17,12 +17,12 @@ __all__ = ["PoolConfig", "ContextPooler"]
 class PoolConfig(AbsModelConfig):
     """Configuration class to store the configuration of `pool layer`.
 
-    Parameters:
-
+    Parameters
+    ----------
         config (:class:`~DeBERTa.deberta.ModelConfig`): The model config. The field of pool config will be initalized with the `pooling` field in model config.
 
-    Attributes:
-
+    Attributes
+    ----------
         hidden_size (int): Size of the encoder layers and the pooler layer, default: `768`.
 
         dropout (float): The dropout rate applied on the output of `[CLS]` token,
@@ -52,9 +52,9 @@ class PoolConfig(AbsModelConfig):
         """Constructs PoolConfig.
 
         Args:
+        ----
            `config`: the config of the model. The field of pool config will be initalized with the 'pooling' field in model config.
         """
-
         self.hidden_size = 768
         self.dropout = 0
         self.hidden_act = "gelu"

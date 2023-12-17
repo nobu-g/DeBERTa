@@ -8,10 +8,12 @@
 #
 
 
-import sentencepiece as sp
-import unicodedata
 import os
+import unicodedata
+
 import regex as re
+import sentencepiece as sp
+
 from ..utils import get_logger
 
 logger = get_logger()
@@ -55,9 +57,7 @@ class SPMTokenizer:
             self.add_special_token(t)
 
         self.spm = spm
-        self.pat = re.compile(
-            r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-        )
+        self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
     def tokenize(self, text):
         pieces = self._encode_as_pieces(text)
@@ -82,9 +82,7 @@ class SPMTokenizer:
 
     def decode(self, tokens, start=-1, end=-1, raw_text=None):
         if raw_text is None:
-            return self.spm.decode_pieces(
-                [t for t in tokens if t not in self.special_tokens]
-            )
+            return self.spm.decode_pieces([t for t in tokens if t not in self.special_tokens])
         else:
             words = self.split_to_words(raw_text)
             word_tokens = [self.tokenize(w) for w in words]
@@ -118,11 +116,7 @@ class SPMTokenizer:
             return True
         if (
             len(token) == 1
-            and (
-                _is_whitespace(list(token)[0])
-                or _is_control(list(token)[0])
-                or _is_punctuation(list(token)[0])
-            )
+            and (_is_whitespace(list(token)[0]) or _is_control(list(token)[0]) or _is_punctuation(list(token)[0]))
         ) or token in self.special_tokens:
             return False
 
@@ -309,12 +303,7 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if (
-        (cp >= 33 and cp <= 47)
-        or (cp >= 58 and cp <= 64)
-        or (cp >= 91 and cp <= 96)
-        or (cp >= 123 and cp <= 126)
-    ):
+    if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):

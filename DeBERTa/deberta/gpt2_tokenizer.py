@@ -11,23 +11,24 @@
 # This piece of code is derived from https://github.com/pytorch/fairseq/blob/master/fairseq/data/encoders/gpt2_bpe.py
 
 import torch
-from .gpt2_bpe_utils import get_encoder, _is_control, _is_whitespace, _is_punctuation
+
+from .gpt2_bpe_utils import _is_control, _is_punctuation, _is_whitespace, get_encoder
 
 __all__ = ["GPT2Tokenizer"]
 
 
-class GPT2Tokenizer(object):
-    """ A wrapper of GPT2 tokenizer with similar interface as BERT tokenizer
+class GPT2Tokenizer:
+    """A wrapper of GPT2 tokenizer with similar interface as BERT tokenizer
 
-  Args:
-    
+    Args:
+    ----
     vocab_file (:obj:`str`, optional):
       The local path of vocabulary package or the release name of vocabulary in `DeBERTa GitHub releases <https://github.com/microsoft/DeBERTa/releases>`_, \
-          e.g. "bpe_encoder", default: `None`. 
-          
+          e.g. "bpe_encoder", default: `None`.
+
           If it's `None`, then it will download the vocabulary in the latest release from GitHub. The vocabulary file is a \
           state dictionary with three items, "dict_map", "vocab", "encoder" which correspond to three files used in `RoBERTa`, i.e. `dict.txt`, `vocab.txt` and `encoder.json`. \
-          
+
           The difference between our wrapped GPT2 tokenizer and RoBERTa wrapped tokenizer are,
 
           - Special tokens, unlike `RoBERTa` which use `<s>`, `</s>` as the `start` token and `end` token of a sentence. We use `[CLS]` and `[SEP]` as the `start` and `end`\
@@ -42,7 +43,7 @@ class GPT2Tokenizer(object):
       List of special tokens to be added to the end of the vocabulary.
 
 
-  """
+    """
 
     def __init__(self, vocab_file=None, do_lower_case=True, special_tokens=None):
         self.pad_token = "[PAD]"
@@ -77,10 +78,11 @@ class GPT2Tokenizer(object):
         """Convert an input text to tokens.
 
         Args:
-
+        ----
           text (:obj:`str`): input text to be tokenized.
 
         Returns:
+        -------
           A list of byte tokens where each token represent the byte id in GPT2 byte dictionary
 
         Example::
@@ -100,28 +102,26 @@ class GPT2Tokenizer(object):
         """Convert list of tokens to ids.
 
         Args:
-
+        ----
           tokens (:obj:`list<str>`): list of tokens
 
         Returns:
-
+        -------
           List of ids
         """
-
         return [self.vocab[t] for t in tokens]
 
     def convert_ids_to_tokens(self, ids):
         """Convert list of ids to tokens.
 
         Args:
-
+        ----
           ids (:obj:`list<int>`): list of ids
 
         Returns:
-
+        -------
           List of tokens
         """
-
         tokens = []
         for i in ids:
             tokens.append(self.ids_to_tokens[i])
@@ -134,11 +134,11 @@ class GPT2Tokenizer(object):
         """Decode list of tokens to text strings.
 
         Args:
-
+        ----
           tokens (:obj:`list<str>`): list of tokens.
 
         Returns:
-
+        -------
           Text string corresponds to the input tokens.
 
         Example::
@@ -159,9 +159,11 @@ class GPT2Tokenizer(object):
         """Adds a special token to the dictionary.
 
         Args:
+        ----
           token (:obj:`str`): Tthe new token/word to be added to the vocabulary.
 
         Returns:
+        -------
           The id of new token in the vocabulary.
 
         """
@@ -172,11 +174,7 @@ class GPT2Tokenizer(object):
         if is_bos:
             return True
         s = self._decode(token)
-        if len(s) == 1 and (
-            _is_whitespace(list(s)[0])
-            or _is_control(list(s)[0])
-            or _is_punctuation(list(s)[0])
-        ):
+        if len(s) == 1 and (_is_whitespace(list(s)[0]) or _is_control(list(s)[0]) or _is_punctuation(list(s)[0])):
             return False
 
         return not s.startswith(" ")
@@ -197,10 +195,12 @@ class GPT2Tokenizer(object):
         """Adds a word to the dictionary.
 
         Args:
+        ----
           word (:obj:`str`): Tthe new token/word to be added to the vocabulary.
           n (int, optional): The frequency of the word.
 
         Returns:
+        -------
           The id of the new word.
 
         """

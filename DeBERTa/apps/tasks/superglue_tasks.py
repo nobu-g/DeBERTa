@@ -7,24 +7,25 @@
 # Date: 01/25/2019
 #
 
-from collections import OrderedDict, defaultdict
-from scipy.special import softmax
-from bisect import bisect
-import numpy as np
-import pdb
 import os
-
+import pdb
 import random
+from bisect import bisect
+from collections import OrderedDict, defaultdict
+
+import numpy as np
 import torch
 import ujson as json
+from scipy.special import softmax
+
+from ...data import DynamicDataset, ExampleInstance, ExampleSet
+from ...data.example import *
+from ...data.example import _truncate_segments
+from ...utils import get_logger
+from ..models import ReCoRDQAModel
 from .metrics import *
 from .task import EvalData, Task
 from .task_registry import register_task
-from ...utils import get_logger
-from ...data import ExampleInstance, ExampleSet, DynamicDataset
-from ...data.example import _truncate_segments
-from ...data.example import *
-from ..models import ReCoRDQAModel
 
 logger = get_logger()
 
@@ -45,7 +46,7 @@ class SuperGLUE(Task):
 
     def get_predict_fn(self):
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(output_dir, "submit-{}-{}.jsonl".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.jsonl")
             preds = np.argmax(logits, axis=-1)
             labels = self.get_labels()
             with open(output, "w", encoding="utf-8") as fs:
@@ -57,17 +58,13 @@ class SuperGLUE(Task):
 
 
 # TODO: Long sequence handling
-@register_task(
-    name="BoolQ", desc="BoolQ - question answering dataset for yes/no questions."
-)
+@register_task(name="BoolQ", desc="BoolQ - question answering dataset for yes/no questions.")
 class BoolQTask(SuperGLUE):
     def __init__(self, data_dir, tokenizer, **kwargs):
         super().__init__(tokenizer, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         train = self.load_data(os.path.join(self.data_dir, "train.jsonl"))
         examples = ExampleSet(train)
         if dataset_size is None:
@@ -173,9 +170,7 @@ class BoolQTask(SuperGLUE):
             f"Context statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
         )
         logger.info(f"question statistics: {get_stats(q_token_size)}")
-        logger.info(
-            f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}"
-        )
+        logger.info(f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}")
 
         return examples
 
@@ -215,9 +210,7 @@ class BoolQTask(SuperGLUE):
 
         for f in features:
             features[f] = torch.tensor(features[f], dtype=torch.int)
-        if (
-            example.label is not None
-        ):  # and example.label[0]>=0 and example.label[1]>=0:
+        if example.label is not None:  # and example.label[0]>=0 and example.label[1]>=0:
             label_type = torch.int if label_type == "int" else torch.float
             features["labels"] = torch.tensor(example.label, dtype=label_type)
         return features
@@ -229,9 +222,7 @@ class CBTask(SuperGLUE):
         super().__init__(tokenizer, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         train = self.load_data(os.path.join(self.data_dir, "train.jsonl"))
         examples = ExampleSet(train)
         if dataset_size is None:
@@ -337,9 +328,7 @@ class CBTask(SuperGLUE):
             f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
         )
         logger.info(f"Hypothesis statistics: {get_stats(q_token_size)}")
-        logger.info(
-            f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}"
-        )
+        logger.info(f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}")
 
         return examples
 
@@ -390,9 +379,7 @@ class CBTask(SuperGLUE):
 
         for f in features:
             features[f] = torch.tensor(features[f], dtype=torch.int)
-        if (
-            example.label is not None
-        ):  # and example.label[0]>=0 and example.label[1]>=0:
+        if example.label is not None:  # and example.label[0]>=0 and example.label[1]>=0:
             label_type = torch.int if label_type == "int" else torch.float
             features["labels"] = torch.tensor(example.label, dtype=label_type)
         return features
@@ -405,9 +392,7 @@ class MultiRCTask(SuperGLUE):
         super().__init__(tokenizer, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         train = self.load_data(os.path.join(self.data_dir, "train.jsonl"))
         examples = ExampleSet(train)
         if dataset_size is None:
@@ -502,7 +487,7 @@ class MultiRCTask(SuperGLUE):
                     ans.append({"idx": a["ans_id"], "label": a["label"]})
                 docs[results[qid][0]["doc_id"]].append({"idx": qid, "answers": ans})
 
-            output = os.path.join(output_dir, "submit-{}-{}.jsonl".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.jsonl")
             with open(output, "w", encoding="utf-8") as fs:
                 for doc_id in docs.keys():
                     ans = {"idx": doc_id, "passage": {"questions": docs[doc_id]}}
@@ -585,9 +570,7 @@ class MultiRCTask(SuperGLUE):
         )
         logger.info(f"Question statistics: {get_stats(q_token_size)}")
         # logger.info(f'Answer statistics: {get_stats(a_token_size)}')
-        logger.info(
-            f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}"
-        )
+        logger.info(f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}")
 
         return examples
 
@@ -627,9 +610,7 @@ class MultiRCTask(SuperGLUE):
 
         for f in features:
             features[f] = torch.tensor(features[f], dtype=torch.int)
-        if (
-            example.label is not None
-        ):  # and example.label[0]>=0 and example.label[1]>=0:
+        if example.label is not None:  # and example.label[0]>=0 and example.label[1]>=0:
             label_type = torch.int if label_type == "int" else torch.float
             features["labels"] = torch.tensor(example.label, dtype=label_type)
         return features
@@ -655,9 +636,7 @@ class ReCoRDTask(Task):
         else:
             max_examples = None
 
-        train = self.load_data(
-            os.path.join(self.data_dir, "train.jsonl"), max_examples=max_examples
-        )
+        train = self.load_data(os.path.join(self.data_dir, "train.jsonl"), max_examples=max_examples)
         examples = ExampleSet(train)
         if dataset_size is None:
             dataset_size = len(examples) * epochs
@@ -730,9 +709,7 @@ class ReCoRDTask(Task):
 
         def metrics_fn(logits, labels):
             predictions = self.produce_answers(logits, examples)
-            all_predictions = {
-                id: [a["text"] for a in predictions[id]] for id in predictions
-            }
+            all_predictions = {id: [a["text"] for a in predictions[id]] for id in predictions}
             top1predictions = {id: predictions[id][0]["text"] for id in predictions}
             answers = {e.qid: e.answers for e in examples}
             metrics = ReCoRD_Eval(answers, top1predictions)
@@ -742,17 +719,13 @@ class ReCoRDTask(Task):
 
     def get_predict_fn(self, examples, topk=5):
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(output_dir, "submit-{}-{}.jsonl".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.jsonl")
             predictions = self.produce_answers(logits, examples)
-            submit = [
-                {"idx": id, "label": predictions[id][0]["text"]} for id in predictions
-            ]
+            submit = [{"idx": id, "label": predictions[id][0]["text"]} for id in predictions]
             with open(output, "w", encoding="utf-8") as fs:
                 for p in submit:
                     fs.write(json.dumps(p) + "\n")
-            output = os.path.join(
-                output_dir, "predictions-{}-{}.jsonl".format(name, prefix)
-            )
+            output = os.path.join(output_dir, f"predictions-{name}-{prefix}.jsonl")
             with open(output, "w", encoding="utf-8") as fs:
                 for id in predictions:
                     p = {"idx": id, "answers": predictions[id]}
@@ -865,18 +838,10 @@ class ReCoRDTask(Task):
                 except:
                     pdb.set_trace()
                 decoded = self.tokenizer.decode(p_tokens[span[0] : span[1]])
-                decoded2 = (
-                    self.tokenizer.decode(p_tokens[span[0] : span[1] - 1])
-                    if span[1] - span[0] > 1
-                    else ""
-                )
+                decoded2 = self.tokenizer.decode(p_tokens[span[0] : span[1] - 1]) if span[1] - span[0] > 1 else ""
                 while text in decoded2:
                     span[1] -= 1
-                    _decoded2 = (
-                        self.tokenizer.decode(p_tokens[span[0] : span[1] - 1])
-                        if span[1] - span[0] > 1
-                        else ""
-                    )
+                    _decoded2 = self.tokenizer.decode(p_tokens[span[0] : span[1] - 1]) if span[1] - span[0] > 1 else ""
                     decoded2 = _decoded2
 
                 if text not in decoded or text in decoded2:
@@ -910,10 +875,7 @@ class ReCoRDTask(Task):
                         start = aw["start"]
                         end = aw["end"] + 1
                         eid = bisect(e_starts, start) - 1
-                        if (
-                            entity_spans[eid][0][0] != start
-                            or entity_spans[eid][0][1] != end
-                        ):
+                        if entity_spans[eid][0][0] != start or entity_spans[eid][0][1] != end:
                             pdb.set_trace()
                         labels.append(eid)
                 else:
@@ -993,9 +955,7 @@ class ReCoRDTask(Task):
         logger.info(f"Question statistics: {get_stats(q_token_size)}")
         logger.info(f"Entities statistics: {get_stats(entities)}")
         logger.info(f"Entity tokens statistics: {get_stats(entity_tokens)}")
-        logger.info(
-            f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}"
-        )
+        logger.info(f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}")
         return examples
 
     def example_to_feature(
@@ -1055,9 +1015,7 @@ class ReCoRDTask(Task):
 
         for f in features:
             features[f] = torch.tensor(features[f], dtype=torch.int)
-        if (
-            example.label is not None
-        ):  # and example.label[0]>=0 and example.label[1]>=0:
+        if example.label is not None:  # and example.label[0]>=0 and example.label[1]>=0:
             labels = [0] * max_entities
             for l in example.label:
                 labels[l] = 1
@@ -1078,9 +1036,7 @@ class COPATask(SuperGLUE):
         super().__init__(tokenizer, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         train = self.load_data(os.path.join(self.data_dir, "train.jsonl"))
         examples = ExampleSet(train)
         if dataset_size is None:
@@ -1150,7 +1106,7 @@ class COPATask(SuperGLUE):
 
     def get_predict_fn(self):
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(output_dir, "submit-{}-{}.tsv".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.tsv")
             probs = softmax(logits, -1)[:, 1]
             probs = np.reshape(probs, (len(logits) // 2, 2))
             preds = np.argmax(probs, axis=-1)
@@ -1241,9 +1197,7 @@ class COPATask(SuperGLUE):
             f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
         )
         # logger.info(f'Question statistics: {get_stats(q_token_size)}')
-        logger.info(
-            f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}"
-        )
+        logger.info(f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}")
 
         return examples
 
@@ -1288,9 +1242,7 @@ class COPATask(SuperGLUE):
 
         features = make_pair_feature(example.segments)
 
-        if (
-            example.label is not None
-        ):  # and example.label[0]>=0 and example.label[1]>=0:
+        if example.label is not None:  # and example.label[0]>=0 and example.label[1]>=0:
             label_type = torch.int if label_type == "int" else torch.float
             features["labels"] = torch.tensor(example.label, dtype=label_type)
         return features
@@ -1316,9 +1268,7 @@ class WiCTask(SuperGLUE):
         else:
             max_examples = None
 
-        train = self.load_data(
-            os.path.join(self.data_dir, "train.jsonl"), max_examples=max_examples
-        )
+        train = self.load_data(os.path.join(self.data_dir, "train.jsonl"), max_examples=max_examples)
         examples = ExampleSet(train)
         if dataset_size is None:
             dataset_size = len(examples) * epochs
@@ -1462,18 +1412,10 @@ class WiCTask(SuperGLUE):
                     word_token_ends[we - 1],
                 ]
                 decoded = self.tokenizer.decode(tokens[span[0] : span[1]])
-                decoded2 = (
-                    self.tokenizer.decode(tokens[span[0] : span[1] - 1])
-                    if span[1] - span[0] > 1
-                    else ""
-                )
+                decoded2 = self.tokenizer.decode(tokens[span[0] : span[1] - 1]) if span[1] - span[0] > 1 else ""
                 while text in decoded2:
                     span[1] -= 1
-                    _decoded2 = (
-                        self.tokenizer.decode(tokens[span[0] : span[1] - 1])
-                        if span[1] - span[0] > 1
-                        else ""
-                    )
+                    _decoded2 = self.tokenizer.decode(tokens[span[0] : span[1] - 1]) if span[1] - span[0] > 1 else ""
                     decoded2 = _decoded2
 
                 if text not in decoded or text in decoded2:
@@ -1483,9 +1425,7 @@ class WiCTask(SuperGLUE):
 
             s1_tokens, s1_span = tokenize_sentence(s1, start1, end1)
             s2_tokens, s2_span = tokenize_sentence(s2, start2, end2)
-            example = ExampleInstance(
-                segments=[s1_tokens, s2_tokens], label=label, spans=[s1_span, s2_span]
-            )
+            example = ExampleInstance(segments=[s1_tokens, s2_tokens], label=label, spans=[s1_span, s2_span])
             examples.append(example)
 
         def get_stats(l):
@@ -1500,9 +1440,7 @@ class WiCTask(SuperGLUE):
         )
         logger.info(f"Sentence2 statistics: {get_stats(s2_token_size)}")
         logger.info(f"Word span statistics: {get_stats(span1)}")
-        logger.info(
-            f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}"
-        )
+        logger.info(f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}")
         return examples
 
     def example_to_feature(
@@ -1553,12 +1491,8 @@ class WiCTask(SuperGLUE):
 
         for f in features:
             features[f] = torch.tensor(features[f], dtype=torch.int)
-        if (
-            example.label is not None
-        ):  # and example.label[0]>=0 and example.label[1]>=0:
-            features["labels"] = torch.tensor(
-                self.label2id(example.label), dtype=torch.int
-            )
+        if example.label is not None:  # and example.label[0]>=0 and example.label[1]>=0:
+            features["labels"] = torch.tensor(self.label2id(example.label), dtype=torch.int)
         return features
 
     def get_model_class_fn(self):

@@ -8,9 +8,11 @@
 #
 
 import math
-from packaging import version
+
 import torch
+from packaging import version
 from torch.nn import LayerNorm
+
 from ..utils.jit_tracing import traceable
 
 if version.Version(torch.__version__) >= version.Version("1.0.0"):
@@ -26,7 +28,7 @@ class XSoftmax(torch.autograd.Function):
     """Masked Softmax which is optimized for saving memory
 
     Args:
-
+    ----
       input (:obj:`torch.tensor`): The input tensor that will apply softmax.
       mask (:obj:`torch.IntTensor`): The mask matrix where 0 indicate that element will be ignored in the softmax caculation.
       dim (int): The dimenssion that will apply softmax.
@@ -65,9 +67,7 @@ class XSoftmax(torch.autograd.Function):
 
         (output,) = self.saved_tensors
         if version.Version(torch.__version__) >= version.Version("1.11.0a"):
-            inputGrad = _softmax_backward_data(
-                grad_output, output, self.dim, output.dtype
-            )
+            inputGrad = _softmax_backward_data(grad_output, output, self.dim, output.dtype)
         else:
             inputGrad = _softmax_backward_data(grad_output, output, self.dim, output)
         return inputGrad, None, None
@@ -87,9 +87,7 @@ class XSoftmax(torch.autograd.Function):
             ),
             to_i=sym_help.cast_pytorch_to_onnx["Byte"],
         )
-        output = masked_fill(
-            g, self, r_mask, g.op("Constant", value_t=torch.tensor(float("-inf")))
-        )
+        output = masked_fill(g, self, r_mask, g.op("Constant", value_t=torch.tensor(float("-inf"))))
         output = softmax(g, output, dim)
         return masked_fill(
             g,
@@ -99,7 +97,7 @@ class XSoftmax(torch.autograd.Function):
         )
 
 
-class DropoutContext(object):
+class DropoutContext:
     def __init__(self):
         self.dropout = 0
         self.mask = None
@@ -154,7 +152,7 @@ class StableDropout(torch.nn.Module):
     """Optimized dropout module for stabilizing the training
 
     Args:
-
+    ----
       drop_prob (float): the dropout probabilities
 
     """
@@ -169,7 +167,7 @@ class StableDropout(torch.nn.Module):
         """Call the module
 
         Args:
-
+        ----
           x (:obj:`torch.tensor`): The input tensor to apply dropout
 
 
@@ -206,6 +204,7 @@ def MaskedLayerNorm(layerNorm, input, mask=None):
     """Masked LayerNorm which will apply mask over the output of LayerNorm to avoid inaccurate updatings to the LayerNorm module.
 
     Args:
+    ----
       layernorm (:obj:`~DeBERTa.deberta.LayerNorm`): LayerNorm module or function
       input (:obj:`torch.tensor`): The input tensor
       mask (:obj:`torch.IntTensor`): The mask to applied on the output of LayerNorm where `0` indicate the output of that element will be ignored, i.e. set to `0`

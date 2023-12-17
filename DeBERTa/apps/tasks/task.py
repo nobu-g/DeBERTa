@@ -3,15 +3,16 @@
 # Date: 01/25/2019
 #
 
-import os
 import csv
+import os
 from collections import OrderedDict
-import numpy as np
-from ...utils import get_logger
-from ...data import example_to_feature
-from .metrics import *
 
+import numpy as np
+
+from ...data import example_to_feature
+from ...utils import get_logger
 from ..models import SequenceClassificationModel
+from .metrics import *
 
 logger = get_logger()
 
@@ -32,12 +33,12 @@ class EvalData:
             return OrderedDict(accuracy=metric_accuracy(logits, labels))
 
         def default_pred_fn(logits, output_dir, name, prefix):
-            output = os.path.join(output_dir, "submit-{}-{}.tsv".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.tsv")
             preds = np.argmax(logits, axis=-1)
             with open(output, "w", encoding="utf-8") as fs:
                 fs.write("index\tpredictions\n")
                 for i, p in enumerate(preds):
-                    fs.write("{}\t{}\n".format(i, p))
+                    fs.write(f"{i}\t{p}\n")
 
         self.name = name
         self.data = examples
@@ -98,29 +99,27 @@ class Task:
         """Calcuate metrics based on prediction results"""
 
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(output_dir, "submit-{}-{}.tsv".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.tsv")
             preds = np.argmax(logits, axis=-1)
             labels = self.get_labels()
             with open(output, "w", encoding="utf-8") as fs:
                 fs.write("index\tpredictions\n")
                 for i, p in enumerate(preds):
-                    fs.write("{}\t{}\n".format(i, labels[p]))
+                    fs.write(f"{i}\t{labels[p]}\n")
 
         return predict_fn
 
     @classmethod
     def _read_tsv(cls, input_file, quotechar=None):
         """Reads a tab separated value file."""
-        with open(input_file, "r", encoding="utf-8") as f:
+        with open(input_file, encoding="utf-8") as f:
             reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
             lines = []
             for line in reader:
                 lines.append(line)
             return lines
 
-    def get_feature_fn(
-        self, max_seq_len=512, mask_gen=None, label_type="int", training=False
-    ):
+    def get_feature_fn(self, max_seq_len=512, mask_gen=None, label_type="int", training=False):
         tokenizer = self.tokenizer
 
         def _example_to_feature(example, rng=None, ext_params=None, **kwargs):

@@ -3,20 +3,20 @@
 # Date: 01/25/2019
 #
 
-from collections import OrderedDict
 import os
-
 import random
-import torch
 import re
+from collections import OrderedDict
+
+import torch
 import ujson as json
-from DeBERTa.apps.tasks.metrics import *
-from DeBERTa.apps.tasks import EvalData, Task, register_task
-from DeBERTa.data import ExampleInstance, ExampleSet, DynamicDataset
-from DeBERTa.data.example import *
-from DeBERTa.utils import get_logger
-from DeBERTa.data.example import _truncate_segments
 from DeBERTa.apps.models.multi_choice import MultiChoiceModel
+from DeBERTa.apps.tasks import EvalData, Task, register_task
+from DeBERTa.apps.tasks.metrics import *
+from DeBERTa.data import DynamicDataset, ExampleInstance, ExampleSet
+from DeBERTa.data.example import *
+from DeBERTa.data.example import _truncate_segments
+from DeBERTa.utils import get_logger
 
 logger = get_logger()
 
@@ -32,9 +32,7 @@ class MyRACETask(Task):
         super().__init__(tokenizer, args, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         middle = self.load_jsonl(os.path.join(self.data_dir, "train_middle.jsonl"))
         high = self.load_jsonl(os.path.join(self.data_dir, "train_high.jsonl"))
         examples = ExampleSet(middle + high)
@@ -124,9 +122,7 @@ class MyRACETask(Task):
             for d in data:
                 page = d["article"]
                 for q, o, a in zip(d["questions"], d["options"], d["answers"]):
-                    example = ExampleInstance(
-                        segments=[page, q, *o], label=self.label2id(a)
-                    )
+                    example = ExampleInstance(segments=[page, q, *o], label=self.label2id(a))
                     examples.append(example)
         return examples
 
@@ -160,16 +156,12 @@ class MyRACETask(Task):
         max_num_tokens = max_seq_len - 3
 
         def _normalize(text):
-            text = re.sub(
-                r"\s+", " ", text.strip("\t \r\n_").replace("\n", " ")
-            ).strip()
+            text = re.sub(r"\s+", " ", text.strip("\t \r\n_").replace("\n", " ")).strip()
             return text
 
         # page,question,options
         context = tokenizer.tokenize(_normalize(example.segments[0]))
-        features = OrderedDict(
-            input_ids=[], type_ids=[], position_ids=[], input_mask=[]
-        )
+        features = OrderedDict(input_ids=[], type_ids=[], position_ids=[], input_mask=[])
         for option in example.segments[2:]:
             # TODO: truncate
             question = example.segments[1]

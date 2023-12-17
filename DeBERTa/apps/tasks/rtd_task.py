@@ -3,34 +3,37 @@
 # Date: 01/25/2019
 #
 
-from collections import OrderedDict, defaultdict
 import copy
-import numpy as np
 import os
-
 import random
-import torch
 import shutil
+from collections import OrderedDict, defaultdict
+
+import numpy as np
+import torch
 from torch.utils.data import DataLoader
+
+from ...data import (
+    AsyncDataLoader,
+    BatchSampler,
+    DistributedBatchSampler,
+    DynamicDataset,
+    ExampleInstance,
+    ExampleSet,
+    SequentialSampler,
+)
+from ...data.example import *
+from ...data.example import _truncate_segments
+from ...deberta import NNModule
+from ...training import DistributedTrainer, batch_to
+from ...utils import boolean_string, get_logger
+from ...utils import xtqdm as tqdm
+from .._utils import merge_distributed
+from ..models import MaskedLanguageModel, ReplacedTokenDetectionModel
 from .metrics import *
+from .mlm_task import NGramMaskGenerator
 from .task import EvalData, Task
 from .task_registry import register_task
-from ...utils import xtqdm as tqdm
-from ...data import ExampleInstance, ExampleSet, DynamicDataset
-from ...data.example import _truncate_segments
-from ...data.example import *
-from ...deberta import NNModule
-from ...utils import get_logger, boolean_string
-from ...training import DistributedTrainer, batch_to
-from ...data import (
-    DistributedBatchSampler,
-    SequentialSampler,
-    BatchSampler,
-    AsyncDataLoader,
-)
-from ..models import MaskedLanguageModel, ReplacedTokenDetectionModel
-from .mlm_task import NGramMaskGenerator
-from .._utils import merge_distributed
 
 logger = get_logger()
 
@@ -50,25 +53,15 @@ class RTDModel(NNModule):
         self.discriminator._register_load_state_dict_pre_hook(self._pre_load_hook)
 
         self.share_embedding = getattr(config, "embedding_sharing", "none").lower()
-        if (
-            self.share_embedding == "gdes"
-        ):  # Gradient-disentangled weight/embedding sharing
-            word_bias = torch.zeros_like(
-                self.discriminator.deberta.embeddings.word_embeddings.weight
-            )
+        if self.share_embedding == "gdes":  # Gradient-disentangled weight/embedding sharing
+            word_bias = torch.zeros_like(self.discriminator.deberta.embeddings.word_embeddings.weight)
             word_bias = torch.nn.Parameter(word_bias)
-            position_bias = torch.zeros_like(
-                self.discriminator.deberta.embeddings.position_embeddings.weight
-            )
+            position_bias = torch.zeros_like(self.discriminator.deberta.embeddings.position_embeddings.weight)
             position_bias = torch.nn.Parameter(position_bias)
             delattr(self.discriminator.deberta.embeddings.word_embeddings, "weight")
-            self.discriminator.deberta.embeddings.word_embeddings.register_parameter(
-                "_weight", word_bias
-            )
+            self.discriminator.deberta.embeddings.word_embeddings.register_parameter("_weight", word_bias)
             delattr(self.discriminator.deberta.embeddings.position_embeddings, "weight")
-            self.discriminator.deberta.embeddings.position_embeddings.register_parameter(
-                "_weight", position_bias
-            )
+            self.discriminator.deberta.embeddings.position_embeddings.register_parameter("_weight", position_bias)
         self.register_discriminator_fw_hook()
 
     def _pre_load_hook(
@@ -127,20 +120,14 @@ class RTDModel(NNModule):
 
     def register_discriminator_fw_hook(self, *wargs):
         def fw_hook(module, *inputs):
-            if (
-                self.share_embedding == "gdes"
-            ):  # Gradient-disentangled weight/embedding sharing
+            if self.share_embedding == "gdes":  # Gradient-disentangled weight/embedding sharing
                 g_w_ebd = self.generator.deberta.embeddings.word_embeddings
                 d_w_ebd = self.discriminator.deberta.embeddings.word_embeddings
-                self._set_param(
-                    d_w_ebd, "weight", g_w_ebd.weight.detach() + d_w_ebd._weight
-                )
+                self._set_param(d_w_ebd, "weight", g_w_ebd.weight.detach() + d_w_ebd._weight)
 
                 g_p_ebd = self.generator.deberta.embeddings.position_embeddings
                 d_p_ebd = self.discriminator.deberta.embeddings.position_embeddings
-                self._set_param(
-                    d_p_ebd, "weight", g_p_ebd.weight.detach() + d_p_ebd._weight
-                )
+                self._set_param(d_p_ebd, "weight", g_p_ebd.weight.detach() + d_p_ebd._weight)
             elif self.share_embedding == "es":  # vallina embedding sharing
                 g_w_ebd = self.generator.deberta.embeddings.word_embeddings
                 d_w_ebd = self.discriminator.deberta.embeddings.word_embeddings
@@ -149,7 +136,6 @@ class RTDModel(NNModule):
                 g_p_ebd = self.generator.deberta.embeddings.position_embeddings
                 d_p_ebd = self.discriminator.deberta.embeddings.position_embeddings
                 self._set_param(d_p_ebd, "weight", g_p_ebd.weight)
-            return None
 
         self.discriminator.register_forward_pre_hook(fw_hook)
 
@@ -182,9 +168,7 @@ class RTDTask(Task):
             dataset_size = self.args.num_training_steps * self.args.train_batch_size
         return DynamicDataset(
             examples,
-            feature_fn=self.get_feature_fn(
-                max_seq_len=max_seq_len, mask_gen=self.mask_gen
-            ),
+            feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, mask_gen=self.mask_gen),
             dataset_size=dataset_size,
             shuffle=True,
             **kwargs,
@@ -202,9 +186,7 @@ class RTDTask(Task):
             _size = len(d.data)
             d.data = DynamicDataset(
                 d.data,
-                feature_fn=self.get_feature_fn(
-                    max_seq_len=max_seq_len, mask_gen=self.mask_gen
-                ),
+                feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, mask_gen=self.mask_gen),
                 dataset_size=_size,
                 **kwargs,
             )
@@ -297,9 +279,7 @@ class RTDTask(Task):
         )
 
         for f in features:
-            features[f] = torch.tensor(
-                features[f] + [0] * (max_seq_len - len(token_ids)), dtype=torch.int
-            )
+            features[f] = torch.tensor(features[f] + [0] * (max_seq_len - len(token_ids)), dtype=torch.int)
         return features
 
     def get_model_class_fn(self):
@@ -308,31 +288,19 @@ class RTDTask(Task):
             if self.args.init_generator is not None:
                 logger.info(f"Load generator from {self.args.init_generator}")
                 generator = torch.load(self.args.init_generator, map_location="cpu")
-                missing_keys, unexpected_keys = model.generator.load_state_dict(
-                    generator, strict=False
-                )
+                missing_keys, unexpected_keys = model.generator.load_state_dict(generator, strict=False)
                 if missing_keys and (len(missing_keys) > 0):
                     logger.warning(f"Load generator with missing keys: {missing_keys}")
                 if unexpected_keys and (len(unexpected_keys) > 0):
-                    logger.warning(
-                        f"Load generator with unexptected keys: {unexpected_keys}"
-                    )
+                    logger.warning(f"Load generator with unexptected keys: {unexpected_keys}")
             if self.args.init_discriminator is not None:
                 logger.info(f"Load discriminator from {self.args.init_discriminator}")
-                discriminator = torch.load(
-                    self.args.init_discriminator, map_location="cpu"
-                )
-                missing_keys, unexpected_keys = model.discriminator.load_state_dict(
-                    discriminator, strict=False
-                )
+                discriminator = torch.load(self.args.init_discriminator, map_location="cpu")
+                missing_keys, unexpected_keys = model.discriminator.load_state_dict(discriminator, strict=False)
                 if missing_keys and (len(missing_keys) > 0):
-                    logger.warning(
-                        f"Load discriminator with missing keys: {missing_keys}"
-                    )
+                    logger.warning(f"Load discriminator with missing keys: {missing_keys}")
                 if unexpected_keys and (len(unexpected_keys) > 0):
-                    logger.warning(
-                        f"Load discriminator with unexptected keys: {unexpected_keys}"
-                    )
+                    logger.warning(f"Load discriminator with unexptected keys: {unexpected_keys}")
             return model
 
         return partial_class
@@ -343,14 +311,10 @@ class RTDTask(Task):
                 gen_args = copy.deepcopy(args)
                 gen_args.checkpoint_dir = os.path.join(gen_args.output_dir, "generator")
                 os.makedirs(gen_args.checkpoint_dir, exist_ok=True)
-                with open(
-                    os.path.join(gen_args.checkpoint_dir, "model_config.json"), "w"
-                ) as fs:
+                with open(os.path.join(gen_args.checkpoint_dir, "model_config.json"), "w") as fs:
                     fs.write(model.config.generator.to_json_string() + "\n")
                 shutil.copy(args.vocab_path, gen_args.checkpoint_dir)
-                loss_fn = self.get_decoupled_loss_fn(
-                    args, model, data_fn, device, args.num_training_steps
-                )
+                loss_fn = self.get_decoupled_loss_fn(args, model, data_fn, device, args.num_training_steps)
                 trainer = DistributedTrainer(
                     gen_args,
                     gen_args.output_dir,
@@ -383,16 +347,12 @@ class RTDTask(Task):
             prefix = f"{tag}_{prefix}" if tag is not None else prefix
             eval_results = OrderedDict()
             eval_metric = 0
-            no_tqdm = (
-                True if os.getenv("NO_TQDM", "0") != "0" else False
-            ) or args.rank > 0
+            no_tqdm = (True if os.getenv("NO_TQDM", "0") != "0" else False) or args.rank > 0
             for eval_item in eval_data:
                 name = eval_item.name
                 eval_sampler = SequentialSampler(len(eval_item.data))
                 batch_sampler = BatchSampler(eval_sampler, args.eval_batch_size)
-                batch_sampler = DistributedBatchSampler(
-                    batch_sampler, rank=args.rank, world_size=args.world_size
-                )
+                batch_sampler = DistributedBatchSampler(batch_sampler, rank=args.rank, world_size=args.world_size)
                 eval_dataloader = DataLoader(
                     eval_item.data,
                     batch_sampler=batch_sampler,
@@ -406,7 +366,7 @@ class RTDTask(Task):
                 for batch in tqdm(
                     AsyncDataLoader(eval_dataloader),
                     ncols=80,
-                    desc="Evaluating: {}".format(prefix),
+                    desc=f"Evaluating: {prefix}",
                     disable=no_tqdm,
                 ):
                     batch = batch_to(batch, device)
@@ -436,18 +396,15 @@ class RTDTask(Task):
                 result["perplexity"] = torch.exp(eval_loss).item()
                 critial_metrics = (
                     set(metrics.keys())
-                    if eval_item.critial_metrics is None
-                    or len(eval_item.critial_metrics) == 0
+                    if eval_item.critial_metrics is None or len(eval_item.critial_metrics) == 0
                     else eval_item.critial_metrics
                 )
-                eval_metric = np.mean(
-                    [v for k, v in metrics.items() if k in critial_metrics]
-                )
+                eval_metric = np.mean([v for k, v in metrics.items() if k in critial_metrics])
                 result["eval_loss"] = eval_loss.item()
                 result["eval_metric"] = eval_metric
                 result["eval_samples"] = len(labels)
                 if args.rank <= 0:
-                    logger.info("***** Eval results-{}-{} *****".format(name, prefix))
+                    logger.info(f"***** Eval results-{name}-{prefix} *****")
                     for key in sorted(result.keys()):
                         logger.info("  %s = %s", key, str(result[key]))
                 eval_results[name] = (eval_metric, predicts, labels)
@@ -473,9 +430,7 @@ class RTDTask(Task):
         disc_args = copy.deepcopy(args)
         disc_args.checkpoint_dir = os.path.join(disc_args.output_dir, "discriminator")
         os.makedirs(disc_args.checkpoint_dir, exist_ok=True)
-        with open(
-            os.path.join(disc_args.checkpoint_dir, "model_config.json"), "w"
-        ) as fs:
+        with open(os.path.join(disc_args.checkpoint_dir, "model_config.json"), "w") as fs:
             fs.write(model.config.discriminator.to_json_string() + "\n")
         shutil.copy(args.vocab_path, disc_args.checkpoint_dir)
         if disc_args.discriminator_learning_rate > 0:
@@ -536,9 +491,7 @@ class RTDTask(Task):
         """Add task specific arguments
         e.g. parser.add_argument('--data_dir', type=str, help='The path of data directory.')
         """
-        parser.add_argument(
-            "--rtd_lambda", type=float, default=10, help="Weight of RTD loss"
-        )
+        parser.add_argument("--rtd_lambda", type=float, default=10, help="Weight of RTD loss")
         parser.add_argument(
             "--decoupled_training",
             type=boolean_string,

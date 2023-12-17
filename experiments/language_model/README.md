@@ -2,7 +2,7 @@
 
 ## Data
 
-We use [wiki103](https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-103-v1.zip) data as example, which is publicly available. It contains three text files, `train.txt`, `valid.txt` and `text.txt`. We use `train.txt` to train the model and `valid.txt` to evalute the intermeidate checkpoints. We first need to run `prepara_data.py` to tokenize these text files. We concatenate all documents into a single text and split it into lines of tokens, while each line has at most 510 token (2 tokens are left to special tokens `[CLS]` and `[SEP]`). 
+We use [wiki103](https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-103-v1.zip) data as example, which is publicly available. It contains three text files, `train.txt`, `valid.txt` and `text.txt`. We use `train.txt` to train the model and `valid.txt` to evalute the intermeidate checkpoints. We first need to run `prepara_data.py` to tokenize these text files. We concatenate all documents into a single text and split it into lines of tokens, while each line has at most 510 token (2 tokens are left to special tokens `[CLS]` and `[SEP]`).
 
 ## Pre-training with Masked Language Modeling task
 
@@ -24,7 +24,7 @@ Run `rtd.sh` to train a ELECTRA like model using RTD as the pre-training task. F
 
 ## Continuously training with Replaced Token Detection
 
-Run `rtd.sh deberta-v3-X-continue` to continuously train DeBERTaV3-X models with following checkpoints. 
+Run `rtd.sh deberta-v3-X-continue` to continuously train DeBERTaV3-X models with following checkpoints.
 
 Please check the script to specify initialization models of generator and discriminator.
 
@@ -48,7 +48,7 @@ To train with multiple node, you need to specify three environment variables,
 
 For example, to run train a model with 2 nodes,
 
-- On **node0**, 
+- On **node0**,
  ``` bash
  export WORLD_SIZE=2
  export MASTER_ADDR=node0
@@ -57,7 +57,7 @@ For example, to run train a model with 2 nodes,
  ./rtd.sh deberta-v3-xsmall
  ```
 
-- On **node1**, 
+- On **node1**,
  ``` bash
  export WORLD_SIZE=2
  export MASTER_ADDR=node0

@@ -6,14 +6,15 @@
 
 # This piece of code is modified based on https://github.com/huggingface/transformers
 
-import torch
-from torch import nn
 from collections.abc import Sequence
-from packaging import version
 
-from .ops import *
-from .disentangled_attention import *
+import torch
+from packaging import version
+from torch import nn
+
 from .da_utils import *
+from .disentangled_attention import *
+from .ops import *
 
 __all__ = [
     "BertEncoder",
@@ -84,9 +85,7 @@ class BertIntermediate(nn.Module):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.intermediate_size)
         self.intermediate_act_fn = (
-            ACT2FN[config.hidden_act]
-            if isinstance(config.hidden_act, str)
-            else config.hidden_act
+            ACT2FN[config.hidden_act] if isinstance(config.hidden_act, str) else config.hidden_act
         )
 
     def forward(self, hidden_states):
@@ -138,9 +137,7 @@ class BertLayer(nn.Module):
         if return_att:
             attention_output, att_matrix = attention_output
         intermediate_output = self.intermediate(attention_output)
-        layer_output = self.output(
-            intermediate_output, attention_output, attention_mask
-        )
+        layer_output = self.output(intermediate_output, attention_output, attention_mask)
         if return_att:
             return (layer_output, att_matrix)
         else:
@@ -165,20 +162,14 @@ class ConvLayer(nn.Module):
         self.config = config
 
     def forward(self, hidden_states, residual_states, input_mask):
-        out = (
-            self.conv(hidden_states.permute(0, 2, 1).contiguous())
-            .permute(0, 2, 1)
-            .contiguous()
-        )
+        out = self.conv(hidden_states.permute(0, 2, 1).contiguous()).permute(0, 2, 1).contiguous()
         if version.Version(torch.__version__) >= version.Version("1.2.0a"):
             rmask = (1 - input_mask).bool()
         else:
             rmask = (1 - input_mask).byte()
         out.masked_fill_(rmask.unsqueeze(-1).expand(out.size()), 0)
         out = ACT2FN[self.conv_act](self.dropout(out))
-        output_states = MaskedLayerNorm(
-            self.LayerNorm, residual_states + out, input_mask
-        )
+        output_states = MaskedLayerNorm(self.LayerNorm, residual_states + out, input_mask)
 
         return output_states
 
@@ -189,9 +180,7 @@ class BertEncoder(nn.Module):
     def __init__(self, config):
         super().__init__()
         # layer = BertLayer(config)
-        self.layer = nn.ModuleList(
-            [BertLayer(config) for _ in range(config.num_hidden_layers)]
-        )
+        self.layer = nn.ModuleList([BertLayer(config) for _ in range(config.num_hidden_layers)])
         self.relative_attention = getattr(config, "relative_attention", False)
         if self.relative_attention:
             self.max_relative_positions = getattr(config, "max_relative_positions", -1)
@@ -203,14 +192,9 @@ class BertEncoder(nn.Module):
                 pos_ebd_size = self.position_buckets * 2
             self.rel_embeddings = nn.Embedding(pos_ebd_size, config.hidden_size)
 
-        self.norm_rel_ebd = [
-            x.strip()
-            for x in getattr(config, "norm_rel_ebd", "none").lower().split("|")
-        ]
+        self.norm_rel_ebd = [x.strip() for x in getattr(config, "norm_rel_ebd", "none").lower().split("|")]
         if "layer_norm" in self.norm_rel_ebd:
-            self.LayerNorm = LayerNorm(
-                config.hidden_size, config.layer_norm_eps, elementwise_affine=True
-            )
+            self.LayerNorm = LayerNorm(config.hidden_size, config.layer_norm_eps, elementwise_affine=True)
         kernel_size = getattr(config, "conv_kernel_size", 0)
         self.with_conv = False
         if kernel_size > 0:
@@ -226,9 +210,7 @@ class BertEncoder(nn.Module):
     def get_attention_mask(self, attention_mask):
         if attention_mask.dim() <= 2:
             extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
-            attention_mask = extended_attention_mask * extended_attention_mask.squeeze(
-                -2
-            ).unsqueeze(-1)
+            attention_mask = extended_attention_mask * extended_attention_mask.squeeze(-2).unsqueeze(-1)
             attention_mask = attention_mask.byte()
         elif attention_mask.dim() == 3:
             attention_mask = attention_mask.unsqueeze(1)
@@ -237,11 +219,7 @@ class BertEncoder(nn.Module):
 
     def get_rel_pos(self, hidden_states, query_states=None, relative_pos=None):
         if self.relative_attention and relative_pos is None:
-            q = (
-                query_states.size(-2)
-                if query_states is not None
-                else hidden_states.size(-2)
-            )
+            q = query_states.size(-2) if query_states is not None else hidden_states.size(-2)
             relative_pos = build_relative_position(
                 q,
                 hidden_states.size(-2),
@@ -315,23 +293,15 @@ class BertEmbeddings(nn.Module):
         super(BertEmbeddings, self).__init__()
         padding_idx = getattr(config, "padding_idx", 0)
         self.embedding_size = getattr(config, "embedding_size", config.hidden_size)
-        self.word_embeddings = nn.Embedding(
-            config.vocab_size, self.embedding_size, padding_idx=padding_idx
-        )
+        self.word_embeddings = nn.Embedding(config.vocab_size, self.embedding_size, padding_idx=padding_idx)
         self.position_biased_input = getattr(config, "position_biased_input", True)
-        self.position_embeddings = nn.Embedding(
-            config.max_position_embeddings, self.embedding_size
-        )
+        self.position_embeddings = nn.Embedding(config.max_position_embeddings, self.embedding_size)
 
         if config.type_vocab_size > 0:
-            self.token_type_embeddings = nn.Embedding(
-                config.type_vocab_size, self.embedding_size
-            )
+            self.token_type_embeddings = nn.Embedding(config.type_vocab_size, self.embedding_size)
 
         if self.embedding_size != config.hidden_size:
-            self.embed_proj = nn.Linear(
-                self.embedding_size, config.hidden_size, bias=False
-            )
+            self.embed_proj = nn.Linear(self.embedding_size, config.hidden_size, bias=False)
         self.LayerNorm = LayerNorm(config.hidden_size, config.layer_norm_eps)
         self.dropout = StableDropout(config.hidden_dropout_prob)
         self.output_to_half = False
@@ -340,9 +310,7 @@ class BertEmbeddings(nn.Module):
     def forward(self, input_ids, token_type_ids=None, position_ids=None, mask=None):
         seq_length = input_ids.size(1)
         if position_ids is None:
-            position_ids = torch.arange(
-                0, seq_length, dtype=torch.long, device=input_ids.device
-            )
+            position_ids = torch.arange(0, seq_length, dtype=torch.long, device=input_ids.device)
             position_ids = position_ids.unsqueeze(0).expand_as(input_ids)
         if token_type_ids is None:
             token_type_ids = torch.zeros_like(input_ids)
@@ -370,15 +338,9 @@ class BertLMPredictionHead(nn.Module):
         super().__init__()
         self.embedding_size = getattr(config, "embedding_size", config.hidden_size)
         self.dense = nn.Linear(config.hidden_size, self.embedding_size)
-        self.transform_act_fn = (
-            ACT2FN[config.hidden_act]
-            if isinstance(config.hidden_act, str)
-            else config.hidden_act
-        )
+        self.transform_act_fn = ACT2FN[config.hidden_act] if isinstance(config.hidden_act, str) else config.hidden_act
 
-        self.LayerNorm = LayerNorm(
-            self.embedding_size, config.layer_norm_eps, elementwise_affine=True
-        )
+        self.LayerNorm = LayerNorm(self.embedding_size, config.layer_norm_eps, elementwise_affine=True)
 
         self.bias = nn.Parameter(torch.zeros(vocab_size))
 
@@ -389,8 +351,5 @@ class BertLMPredictionHead(nn.Module):
         hidden_states = MaskedLayerNorm(self.LayerNorm, hidden_states)
 
         # b x s x v
-        logits = (
-            torch.matmul(hidden_states, embeding_weight.t().to(hidden_states))
-            + self.bias
-        )
+        logits = torch.matmul(hidden_states, embeding_weight.t().to(hidden_states)) + self.bias
         return logits

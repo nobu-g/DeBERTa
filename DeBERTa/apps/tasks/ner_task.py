@@ -1,18 +1,18 @@
-from collections import OrderedDict
-import numpy as np
 import os
 import pdb
 import random
-import torch
-from ...utils import get_logger
+from collections import OrderedDict
 
-from ..models import NERModel
-from ...data import ExampleInstance, ExampleSet, DynamicDataset
+import numpy as np
+import torch
+from seqeval import metrics as seq_metrics
+
+from ...data import DynamicDataset, ExampleInstance, ExampleSet
 from ...data.example import *
+from ...utils import get_logger
+from ..models import NERModel
 from .task import EvalData, Task
 from .task_registry import register_task
-
-from seqeval import metrics as seq_metrics
 
 __all__ = ["NERTask"]
 
@@ -25,12 +25,8 @@ class NERTask(Task):
         super().__init__(tokenizer, args, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
-        train = self.load_data(
-            os.path.join(self.data_dir, "train.txt"), max_seq_len=max_seq_len
-        )
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
+        train = self.load_data(os.path.join(self.data_dir, "train.txt"), max_seq_len=max_seq_len)
         examples = ExampleSet(train)
         if dataset_size is None:
             dataset_size = len(examples) * epochs
@@ -128,7 +124,7 @@ class NERTask(Task):
         """Calcuate metrics based on prediction results"""
 
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(output_dir, "submit-{}-{}.tsv".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.tsv")
             preds = np.argmax(logits, axis=-1)
             labels = self.get_labels()
             with open(output, "w", encoding="utf-8") as fs:
@@ -268,15 +264,13 @@ class NERTask(Task):
 
         for f in features:
             features[f] = torch.tensor(features[f], dtype=torch.int)
-        if (
-            example.label is not None
-        ):  # and example.label[0]>=0 and example.label[1]>=0:
+        if example.label is not None:  # and example.label[0]>=0 and example.label[1]>=0:
             features["labels"] = torch.tensor(target_labels, dtype=torch.int)
         return features
 
     def extract_docs(self, path):
         docs = []
-        with open(path, "r", encoding="utf-8") as fs:
+        with open(path, encoding="utf-8") as fs:
             doc = []
             sent = []
             for line in fs:
@@ -300,9 +294,7 @@ class NERTask(Task):
         if len(doc) > 0:
             docs.append(doc)
             doc = []
-        logger.info(
-            f"Loaded {len(docs)} docs, {sum([len(d) for d in docs])} sentences."
-        )
+        logger.info(f"Loaded {len(docs)} docs, {sum([len(d) for d in docs])} sentences.")
         return docs
 
 

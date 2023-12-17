@@ -7,10 +7,12 @@
 # Date: 05/15/2019
 #
 
-from torch.utils.data import Dataset
-import random
 import mmap
+import random
+
 import numpy as np
+from torch.utils.data import Dataset
+
 from ..utils import get_logger
 
 logger = get_logger()
@@ -32,9 +34,7 @@ class DynamicDataset(Dataset):
 
         self.shuffle = shuffle
         index_buf = mmap.mmap(-1, self.dataset_size * 8)
-        shuffle_idx = np.ndarray(
-            shape=(self.dataset_size,), buffer=index_buf, dtype=int
-        )
+        shuffle_idx = np.ndarray(shape=(self.dataset_size,), buffer=index_buf, dtype=int)
         shuffle_idx[:] = np.arange(self.dataset_size)[:]
         if self.shuffle:
             # rng = np.random.RandomState(0)
@@ -49,7 +49,7 @@ class DynamicDataset(Dataset):
         return self.dataset_size
 
     def __getitem__(self, idx):
-        if isinstance(idx, tuple) or isinstance(idx, list):
+        if isinstance(idx, (list, tuple)):
             idx, ext_params = idx
         else:
             ext_params = None

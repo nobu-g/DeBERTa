@@ -10,7 +10,7 @@ from queue import Queue
 from threading import Thread
 
 
-class AsyncDataLoader(object):
+class AsyncDataLoader:
     def __init__(self, dataloader, buffer_size=100):
         self.buffer_size = buffer_size
         self.dataloader = dataloader

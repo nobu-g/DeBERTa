@@ -1,5 +1,4 @@
-"""
-Logging util
+"""Logging util
 @Author: penhe@microsoft.com
 """
 

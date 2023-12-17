@@ -7,13 +7,11 @@
 # Date: 01/25/2019
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from torch import nn
 from torch.nn import CrossEntropyLoss
-from ...deberta import DeBERTa, NNModule, ACT2FN, StableDropout
+
+from ...deberta import ACT2FN, DeBERTa, NNModule, StableDropout
 
 __all__ = ["NERModel"]
 
@@ -57,9 +55,7 @@ class NERModel(NNModule):
             labels = labels.long().view(-1)
             label_index = (labels >= 0).nonzero().view(-1)
             valid_labels = labels.index_select(dim=0, index=label_index)
-            valid_logits = logits.view(-1, logits.size(-1)).index_select(
-                dim=0, index=label_index
-            )
+            valid_logits = logits.view(-1, logits.size(-1)).index_select(dim=0, index=label_index)
             loss_fn = CrossEntropyLoss()
             loss = loss_fn(valid_logits, valid_labels)
 

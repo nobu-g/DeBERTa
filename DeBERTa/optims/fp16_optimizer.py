@@ -6,11 +6,12 @@
 # Date: 05/15/2019
 #
 
-""" FP16 optimizer wrapper
+"""FP16 optimizer wrapper
 """
 
-from collections import defaultdict
 import math
+from collections import defaultdict
+
 import torch
 import torch.distributed as dist
 from torch._utils import _flatten_dense_tensors, _unflatten_dense_tensors
@@ -55,7 +56,7 @@ class OptParameter(torch.Tensor):
         self._xgrad = grad
 
 
-class Fp16Optimizer(object):
+class Fp16Optimizer:
     def __init__(
         self,
         param_groups,
@@ -84,9 +85,7 @@ class Fp16Optimizer(object):
             params = group["params"]  # parameter
             if len(params) > 1:
                 flattened_params = _flatten_dense_tensors([p.data for p in params])
-                unflattend_params = _unflatten_dense_tensors(
-                    flattened_params, [p.data for p in params]
-                )
+                unflattend_params = _unflatten_dense_tensors(flattened_params, [p.data for p in params])
                 for uf, p in zip(unflattend_params, params):
                     p.data = uf
             else:
@@ -97,19 +96,10 @@ class Fp16Optimizer(object):
 
             if params[0].dtype == torch.half:
                 if self.rank == group_rank or (not self.distributed):
-                    master_params = (
-                        flattened_params.clone()
-                        .to(torch.float)
-                        .detach_()
-                        .to(flattened_params.device)
-                    )
+                    master_params = flattened_params.clone().to(torch.float).detach_().to(flattened_params.device)
                 else:
-                    master_params = (
-                        flattened_params.clone().to(torch.float).detach_().cpu()
-                    )
-                group["params"] = [
-                    OptParameter(master_params, flattened_params, name="master")
-                ]
+                    master_params = flattened_params.clone().to(torch.float).detach_().cpu()
+                group["params"] = [OptParameter(master_params, flattened_params, name="master")]
             else:
                 group["params"] = [OptParameter(flattened_params, None, name="master")]
 
@@ -153,10 +143,7 @@ class Fp16Optimizer(object):
                     # init
                     # make old copy
                     p["la_count"] = 0
-                    p["slow_params"] = [
-                        x.data.detach().clone().requires_grad_(False)
-                        for x in p["params"]
-                    ]
+                    p["slow_params"] = [x.data.detach().clone().requires_grad_(False) for x in p["params"]]
         self.optimizer.step(grad_scale, lr_scale)
         if self.lookahead_k > 0:
             for p in self.param_groups:
@@ -187,9 +174,7 @@ class Fp16Optimizer(object):
         for g in self.original_param_groups:
             for n, p in zip(g["names"], g["params"]):
                 named_params[n] = p
-                named_grads[n] = (
-                    p.grad if p.grad is not None else torch.zeros_like(p.data)
-                )
+                named_grads[n] = p.grad if p.grad is not None else torch.zeros_like(p.data)
 
         wd = get_world_size()
 
@@ -229,9 +214,7 @@ class Fp16Optimizer(object):
         max_grad = 0
 
         all_grads = []
-        for name in sorted(
-            named_params.keys(), key=lambda x: x.replace("deberta.", "bert.")
-        ):
+        for name in sorted(named_params.keys(), key=lambda x: x.replace("deberta.", "bert.")):
             group.append(name)
             group_size += named_params[name].data.numel()
             if group_size >= max_size:

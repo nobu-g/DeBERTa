@@ -3,32 +3,35 @@
 # Date: 01/25/2019
 #
 
-from collections import OrderedDict
-from bisect import bisect
 import math
-import numpy as np
 import os
-
 import random
+from bisect import bisect
+from collections import OrderedDict
+
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
+
+from ...data import (
+    AsyncDataLoader,
+    BatchSampler,
+    DistributedBatchSampler,
+    DynamicDataset,
+    ExampleInstance,
+    ExampleSet,
+    SequentialSampler,
+)
+from ...data.example import *
+from ...data.example import _truncate_segments
+from ...training import batch_to
+from ...utils import get_logger
+from ...utils import xtqdm as tqdm
+from .._utils import merge_distributed
+from ..models import MaskedLanguageModel
 from .metrics import *
 from .task import EvalData, Task
 from .task_registry import register_task
-from ...utils import xtqdm as tqdm
-from ...training import batch_to
-from ...data import (
-    DistributedBatchSampler,
-    SequentialSampler,
-    BatchSampler,
-    AsyncDataLoader,
-)
-from ...data import ExampleInstance, ExampleSet, DynamicDataset
-from ...data.example import _truncate_segments
-from ...data.example import *
-from ...utils import get_logger
-from ..models import MaskedLanguageModel
-from .._utils import merge_distributed
 
 logger = get_logger()
 
@@ -36,8 +39,7 @@ __all__ = ["MLMTask"]
 
 
 class NGramMaskGenerator:
-    """
-    Mask ngram tokens
+    """Mask ngram tokens
     https://github.com/zihangdai/xlnet/blob/0b642d14dd8aec7f1e1ecbf7d6942d5faa6be1f0/data_utils.py
     """
 
@@ -82,18 +84,12 @@ class NGramMaskGenerator:
 
         unigrams = []
         for id in indices:
-            if (
-                self.max_gram > 1
-                and len(unigrams) >= 1
-                and self.tokenizer.part_of_whole_word(tokens[id])
-            ):
+            if self.max_gram > 1 and len(unigrams) >= 1 and self.tokenizer.part_of_whole_word(tokens[id]):
                 unigrams[-1].append(id)
             else:
                 unigrams.append([id])
 
-        num_to_predict = min(
-            self.max_preds_per_seq, max(1, int(round(len(tokens) * self.mask_lm_prob)))
-        )
+        num_to_predict = min(self.max_preds_per_seq, max(1, int(round(len(tokens) * self.mask_lm_prob))))
         mask_len = 0
         offset = 0
         mask_grams = np.array([False] * len(unigrams))
@@ -111,9 +107,7 @@ class NGramMaskGenerator:
         for m, word in zip(mask_grams, unigrams):
             if m:
                 for idx in word:
-                    label = self._mask_token(
-                        idx, tokens, rng, self.mask_prob, self.keep_prob
-                    )
+                    label = self._mask_token(idx, tokens, rng, self.mask_prob, self.keep_prob)
                     target_labels[idx] = label
                     w_cnt += 1
                 if w_cnt >= num_to_predict:
@@ -160,9 +154,7 @@ class MLMTask(Task):
             dataset_size = self.args.num_training_steps * self.args.train_batch_size
         return DynamicDataset(
             examples,
-            feature_fn=self.get_feature_fn(
-                max_seq_len=max_seq_len, mask_gen=self.mask_gen
-            ),
+            feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, mask_gen=self.mask_gen),
             dataset_size=dataset_size,
             shuffle=True,
             **kwargs,
@@ -180,9 +172,7 @@ class MLMTask(Task):
             _size = len(d.data)
             d.data = DynamicDataset(
                 d.data,
-                feature_fn=self.get_feature_fn(
-                    max_seq_len=max_seq_len, mask_gen=self.mask_gen
-                ),
+                feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, mask_gen=self.mask_gen),
                 dataset_size=_size,
                 **kwargs,
             )
@@ -275,9 +265,7 @@ class MLMTask(Task):
         )
 
         for f in features:
-            features[f] = torch.tensor(
-                features[f] + [0] * (max_seq_len - len(token_ids)), dtype=torch.int
-            )
+            features[f] = torch.tensor(features[f] + [0] * (max_seq_len - len(token_ids)), dtype=torch.int)
         return features
 
     def get_eval_fn(self):
@@ -286,16 +274,12 @@ class MLMTask(Task):
             prefix = f"{tag}_{prefix}" if tag is not None else prefix
             eval_results = OrderedDict()
             eval_metric = 0
-            no_tqdm = (
-                True if os.getenv("NO_TQDM", "0") != "0" else False
-            ) or args.rank > 0
+            no_tqdm = (True if os.getenv("NO_TQDM", "0") != "0" else False) or args.rank > 0
             for eval_item in eval_data:
                 name = eval_item.name
                 eval_sampler = SequentialSampler(len(eval_item.data))
                 batch_sampler = BatchSampler(eval_sampler, args.eval_batch_size)
-                batch_sampler = DistributedBatchSampler(
-                    batch_sampler, rank=args.rank, world_size=args.world_size
-                )
+                batch_sampler = DistributedBatchSampler(batch_sampler, rank=args.rank, world_size=args.world_size)
                 eval_dataloader = DataLoader(
                     eval_item.data,
                     batch_sampler=batch_sampler,
@@ -309,7 +293,7 @@ class MLMTask(Task):
                 for batch in tqdm(
                     AsyncDataLoader(eval_dataloader),
                     ncols=80,
-                    desc="Evaluating: {}".format(prefix),
+                    desc=f"Evaluating: {prefix}",
                     disable=no_tqdm,
                 ):
                     batch = batch_to(batch, device)
@@ -339,18 +323,15 @@ class MLMTask(Task):
                 result["perplexity"] = torch.exp(eval_loss).item()
                 critial_metrics = (
                     set(metrics.keys())
-                    if eval_item.critial_metrics is None
-                    or len(eval_item.critial_metrics) == 0
+                    if eval_item.critial_metrics is None or len(eval_item.critial_metrics) == 0
                     else eval_item.critial_metrics
                 )
-                eval_metric = np.mean(
-                    [v for k, v in metrics.items() if k in critial_metrics]
-                )
+                eval_metric = np.mean([v for k, v in metrics.items() if k in critial_metrics])
                 result["eval_loss"] = eval_loss.item()
                 result["eval_metric"] = eval_metric
                 result["eval_samples"] = len(labels)
                 if args.rank <= 0:
-                    logger.info("***** Eval results-{}-{} *****".format(name, prefix))
+                    logger.info(f"***** Eval results-{name}-{prefix} *****")
                     for key in sorted(result.keys()):
                         logger.info("  %s = %s", key, str(result[key]))
                 eval_results[name] = (eval_metric, predicts, labels)
@@ -370,9 +351,7 @@ class MLMTask(Task):
         """Add task specific arguments
         e.g. parser.add_argument('--data_dir', type=str, help='The path of data directory.')
         """
-        parser.add_argument(
-            "--max_ngram", type=int, default=1, help="Maxium ngram sampling span"
-        )
+        parser.add_argument("--max_ngram", type=int, default=1, help="Maxium ngram sampling span")
         parser.add_argument(
             "--num_training_steps",
             type=int,
@@ -382,12 +361,11 @@ class MLMTask(Task):
 
 
 def test_MLM():
-    from ...deberta import tokenizers, load_vocab
     import pdb
 
-    vocab_path, vocab_type = load_vocab(
-        vocab_path=None, vocab_type="spm", pretrained_id="xlarge-v2"
-    )
+    from ...deberta import load_vocab, tokenizers
+
+    vocab_path, vocab_type = load_vocab(vocab_path=None, vocab_type="spm", pretrained_id="xlarge-v2")
     tokenizer = tokenizers[vocab_type](vocab_path)
     mask_gen = NGramMaskGenerator(tokenizer, max_gram=1)
     mlm = MLMTask("/mnt/penhe/data/wiki103/spm", tokenizer, None)

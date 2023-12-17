@@ -12,37 +12,36 @@
 import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
-from ..deberta import tokenizers, load_vocab
-from collections import OrderedDict
-from collections.abc import Sequence
 import argparse
 import random
+import shutil
+from collections import OrderedDict
+from collections.abc import Sequence
 
 import numpy as np
 import torch
-import shutil
 from torch.utils.data import DataLoader
-from ..utils import *
-from ..utils import xtqdm as tqdm
-from ..sift import AdversarialLearner, hook_sift_layer
-from .tasks import load_tasks, get_task
-from ._utils import merge_distributed
 
-
-from ..training import (
-    DistributedTrainer,
-    initialize_distributed,
-    batch_to,
-    kill_children,
-)
 from ..data import (
+    AsyncDataLoader,
+    BatchSampler,
     DistributedBatchSampler,
     SequentialSampler,
-    BatchSampler,
-    AsyncDataLoader,
+)
+from ..deberta import load_vocab, tokenizers
+from ..optims import get_args as get_optims_args
+from ..sift import AdversarialLearner, hook_sift_layer
+from ..training import (
+    DistributedTrainer,
+    batch_to,
+    initialize_distributed,
+    kill_children,
 )
 from ..training import get_args as get_training_args
-from ..optims import get_args as get_optims_args
+from ..utils import *
+from ..utils import xtqdm as tqdm
+from ._utils import merge_distributed
+from .tasks import get_task, load_tasks
 
 
 def create_model(args, num_labels, model_class_fn):
@@ -63,13 +62,9 @@ def create_model(args, num_labels, model_class_fn):
     return model
 
 
-def train_model(
-    args, model, device, train_data, eval_data, run_eval_fn, train_fn=None, loss_fn=None
-):
+def train_model(args, model, device, train_data, eval_data, run_eval_fn, train_fn=None, loss_fn=None):
     total_examples = len(train_data)
-    num_train_steps = int(
-        len(train_data) * args.num_train_epochs / args.train_batch_size
-    )
+    num_train_steps = int(len(train_data) * args.num_train_epochs / args.train_batch_size)
     logger.info("  Training batch size = %d", args.train_batch_size)
     logger.info("  Num steps = %d", num_train_steps)
 
@@ -120,10 +115,7 @@ def train_model(
                         logits = logits[-1]
                     return logits
 
-                loss += (
-                    adv.loss(logits, pert_logits_fn, loss_fn=args.vat_loss_fn, **data)
-                    * args.vat_lambda
-                )
+                loss += adv.loss(logits, pert_logits_fn, loss_fn=args.vat_loss_fn, **data) * args.vat_lambda
 
             return loss.mean(), data["input_ids"].size(0)
 
@@ -151,9 +143,7 @@ def train_model(
     train_fn(args, model, device, data_fn=data_fn, eval_fn=eval_fn, loss_fn=loss_fn)
 
 
-def calc_metrics(
-    predicts, labels, eval_loss, eval_item, eval_results, args, name, prefix, steps, tag
-):
+def calc_metrics(predicts, labels, eval_loss, eval_item, eval_results, args, name, prefix, steps, tag):
     tb_metrics = OrderedDict()
     result = OrderedDict()
     metrics_fn = eval_item.metrics_fn
@@ -173,11 +163,9 @@ def calc_metrics(
     result["eval_metric"] = eval_metric
     result["eval_samples"] = len(labels)
     if args.rank <= 0:
-        output_eval_file = os.path.join(
-            args.output_dir, "eval_results_{}_{}.txt".format(name, prefix)
-        )
+        output_eval_file = os.path.join(args.output_dir, f"eval_results_{name}_{prefix}.txt")
         with open(output_eval_file, "w", encoding="utf-8") as writer:
-            logger.info("***** Eval results-{}-{} *****".format(name, prefix))
+            logger.info(f"***** Eval results-{name}-{prefix} *****")
             for key in sorted(result.keys()):
                 logger.info("  %s = %s", key, str(result[key]))
                 writer.write("%s = %s\n" % (key, str(result[key])))
@@ -186,13 +174,9 @@ def calc_metrics(
         if predict_fn is not None:
             predict_fn(predicts, args.output_dir, name, prefix)
         else:
-            output_predict_file = os.path.join(
-                args.output_dir, "predict_results_{}_{}.txt".format(name, prefix)
-            )
+            output_predict_file = os.path.join(args.output_dir, f"predict_results_{name}_{prefix}.txt")
             np.savetxt(output_predict_file, predicts, delimiter="\t")
-            output_label_file = os.path.join(
-                args.output_dir, "predict_labels_{}_{}.txt".format(name, prefix)
-            )
+            output_label_file = os.path.join(args.output_dir, f"predict_labels_{name}_{prefix}.txt")
             np.savetxt(output_label_file, labels, delimiter="\t")
 
     if not eval_item.ignore_metric:
@@ -230,12 +214,8 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
         name = eval_item.name
         eval_sampler = SequentialSampler(len(eval_item.data))
         batch_sampler = BatchSampler(eval_sampler, args.eval_batch_size)
-        batch_sampler = DistributedBatchSampler(
-            batch_sampler, rank=args.rank, world_size=args.world_size
-        )
-        eval_dataloader = DataLoader(
-            eval_item.data, batch_sampler=batch_sampler, num_workers=args.workers
-        )
+        batch_sampler = DistributedBatchSampler(batch_sampler, rank=args.rank, world_size=args.world_size)
+        eval_dataloader = DataLoader(eval_item.data, batch_sampler=batch_sampler, num_workers=args.workers)
         model.eval()
         eval_loss, eval_accuracy = 0, 0
         nb_eval_steps, nb_eval_examples = 0, 0
@@ -244,7 +224,7 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
         for batch in tqdm(
             AsyncDataLoader(eval_dataloader),
             ncols=80,
-            desc="Evaluating: {}".format(prefix),
+            desc=f"Evaluating: {prefix}",
             disable=no_tqdm,
         ):
             _batch = batch.copy()
@@ -256,16 +236,11 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
                         if ort_model_qt is not None:
                             quantize_dynamic(ort_model, ort_model_qt)
                             ort_model = ort_model_qt
-                    if (
-                        torch.distributed.is_initialized()
-                        and torch.distributed.get_world_size() > 1
-                    ):
+                    if torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1:
                         torch.distributed.barrier()
                     sess_opt = ort.SessionOptions()
                     os.environ["ORT_TENSORRT_ENGINE_CACHE_ENABLE"] = "1"
-                    os.environ[
-                        "ORT_TENSORRT_FP16_ENABLE"
-                    ] = "1"  # TRT precision: 1: TRT FP16, 0: TRT FP32
+                    os.environ["ORT_TENSORRT_FP16_ENABLE"] = "1"  # TRT precision: 1: TRT FP16, 0: TRT FP32
                     ort_session = ort.InferenceSession(
                         ort_model,
                         sess_options=sess_opt,
@@ -287,12 +262,7 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
                     if isinstance(_batch[k], torch.Tensor):
                         numpy_input[k] = _batch[k].cpu().numpy()
                 output = ort_session.run(None, numpy_input)
-                output = dict(
-                    [
-                        (n.name, torch.tensor(o).to(device))
-                        for n, o in zip(ort_session.get_outputs(), output)
-                    ]
-                )
+                output = dict([(n.name, torch.tensor(o).to(device)) for n, o in zip(ort_session.get_outputs(), output)])
             if ort_session is None:
                 with torch.no_grad():
                     output = model(**batch)
@@ -351,18 +321,14 @@ def run_predict(args, model, device, eval_data, prefix=None):
         name = eval_item.name
         eval_sampler = SequentialSampler(len(eval_item.data))
         batch_sampler = BatchSampler(eval_sampler, args.eval_batch_size)
-        batch_sampler = DistributedBatchSampler(
-            batch_sampler, rank=args.rank, world_size=args.world_size
-        )
-        eval_dataloader = DataLoader(
-            eval_item.data, batch_sampler=batch_sampler, num_workers=args.workers
-        )
+        batch_sampler = DistributedBatchSampler(batch_sampler, rank=args.rank, world_size=args.world_size)
+        eval_dataloader = DataLoader(eval_item.data, batch_sampler=batch_sampler, num_workers=args.workers)
         model.eval()
         predicts = []
         for batch in tqdm(
             AsyncDataLoader(eval_dataloader),
             ncols=80,
-            desc="Evaluating: {}".format(prefix),
+            desc=f"Evaluating: {prefix}",
             disable=args.rank > 0,
         ):
             batch = batch_to(batch, device)
@@ -376,39 +342,27 @@ def run_predict(args, model, device, eval_data, prefix=None):
             if predict_fn:
                 if isinstance(predicts, Sequence):
                     for k, pred in enumerate(predicts):
-                        output_test_file = os.path.join(
-                            args.output_dir, f"test_logits_{name}@{k}_{prefix}.txt"
-                        )
-                        logger.info(
-                            f"***** Dump prediction results-{name}@{k}-{prefix} *****"
-                        )
-                        logger.info("Location: {}".format(output_test_file))
+                        output_test_file = os.path.join(args.output_dir, f"test_logits_{name}@{k}_{prefix}.txt")
+                        logger.info(f"***** Dump prediction results-{name}@{k}-{prefix} *****")
+                        logger.info(f"Location: {output_test_file}")
                         pred = pred.detach().cpu().numpy()
                         np.savetxt(output_test_file, pred, delimiter="\t")
                         predict_fn(pred, args.output_dir, name + f"@{k}", prefix)
                 else:
-                    output_test_file = os.path.join(
-                        args.output_dir, "test_logits_{}_{}.txt".format(name, prefix)
-                    )
-                    logger.info(
-                        "***** Dump prediction results-{}-{} *****".format(name, prefix)
-                    )
-                    logger.info("Location: {}".format(output_test_file))
+                    output_test_file = os.path.join(args.output_dir, f"test_logits_{name}_{prefix}.txt")
+                    logger.info(f"***** Dump prediction results-{name}-{prefix} *****")
+                    logger.info(f"Location: {output_test_file}")
                     np.savetxt(
                         output_test_file,
                         predicts.detach().cpu().numpy(),
                         delimiter="\t",
                     )
-                    predict_fn(
-                        predicts.detach().cpu().numpy(), args.output_dir, name, prefix
-                    )
+                    predict_fn(predicts.detach().cpu().numpy(), args.output_dir, name, prefix)
 
 
 def main(args):
     if not args.do_train and not args.do_eval and not args.do_predict:
-        raise ValueError(
-            "At least one of `do_train` or `do_eval` or `do_predict` must be True."
-        )
+        raise ValueError("At least one of `do_train` or `do_eval` or `do_predict` must be True.")
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -438,12 +392,10 @@ def main(args):
     model_class_fn = task.get_model_class_fn()
     model = create_model(args, len(label_list), model_class_fn)
     if args.do_train:
-        with open(
-            os.path.join(args.output_dir, "model_config.json"), "w", encoding="utf-8"
-        ) as fs:
+        with open(os.path.join(args.output_dir, "model_config.json"), "w", encoding="utf-8") as fs:
             fs.write(model.config.to_json_string() + "\n")
         shutil.copy(vocab_path, args.output_dir)
-    logger.info("Model config {}".format(model.config))
+    logger.info(f"Model config {model.config}")
     device = initialize_distributed(args)
     if not isinstance(device, torch.device):
         return 0
@@ -489,13 +441,9 @@ class LoadTaskAction(argparse.Action):
                     )
                 return
 
-            assert (
-                values.lower() in all_tasks
-            ), f"{values} is not registed. Valid tasks {list(all_tasks.keys())}"
+            assert values.lower() in all_tasks, f"{values} is not registed. Valid tasks {list(all_tasks.keys())}"
             task = get_task(values)
-            group = parser.add_argument_group(
-                title=f'Task {task._meta["name"]}', description=task._meta["desc"]
-            )
+            group = parser.add_argument_group(title=f'Task {task._meta["name"]}', description=task._meta["desc"])
             task.add_arguments(group)
             type(self)._registered = True
 
@@ -571,9 +519,7 @@ def build_argument_parser():
         help="Whether to run prediction on the test set.",
     )
 
-    parser.add_argument(
-        "--eval_batch_size", default=32, type=int, help="Total batch size for eval."
-    )
+    parser.add_argument("--eval_batch_size", default=32, type=int, help="Total batch size for eval.")
 
     parser.add_argument(
         "--predict_batch_size",
@@ -588,9 +534,7 @@ def build_argument_parser():
         help="The model state file used to initialize the model weights.",
     )
 
-    parser.add_argument(
-        "--model_config", type=str, help="The config file of bert model."
-    )
+    parser.add_argument("--model_config", type=str, help="The config file of bert model.")
 
     parser.add_argument(
         "--cls_drop_out",
@@ -620,13 +564,9 @@ def build_argument_parser():
         help="The path of pre-trained RoBERTa model",
     )
 
-    parser.add_argument(
-        "--vocab_type", default="gpt2", type=str, help="Vocabulary type: [spm, gpt2]"
-    )
+    parser.add_argument("--vocab_type", default="gpt2", type=str, help="Vocabulary type: [spm, gpt2]")
 
-    parser.add_argument(
-        "--vocab_path", default=None, type=str, help="The path of the vocabulary"
-    )
+    parser.add_argument("--vocab_path", default=None, type=str, help="The path of the vocabulary")
 
     parser.add_argument(
         "--vat_lambda",
@@ -674,7 +614,7 @@ if __name__ == "__main__":
     os.makedirs(args.output_dir, exist_ok=True)
     logger = set_logger(
         args.task_name,
-        os.path.join(args.output_dir, "training_{}.log".format(args.task_name)),
+        os.path.join(args.output_dir, f"training_{args.task_name}.log"),
     )
     logger.info(args)
     try:

@@ -2,15 +2,12 @@
 # Author: penhe@microsoft.com
 # Date: 04/25/2019
 #
-""" Masked Language model for representation learning
+"""Masked Language model for representation learning
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 
 import torch
+
 from ...deberta import *
 
 __all__ = ["MaskedLanguageModel"]

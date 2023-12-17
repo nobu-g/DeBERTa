@@ -28,17 +28,17 @@ DeBERTa v2 code and the **900M, 1.5B** [model](https://huggingface.co/models?sea
 - **Vocabulary** In v2 we use a new vocabulary of size 128K built from the training data. Instead of GPT2 tokenizer, we use [sentencepiece](https://github.com/google/sentencepiece) tokenizer.
 - **nGiE(nGram Induced Input Encoding)** In v2 we use an additional convolution layer aside with the first transformer layer to better learn the local dependency of input tokens. We will add more ablation studies on this feature.
 - **Sharing position projection matrix with content projection matrix in attention layer** Based on our previous experiment, we found this can save parameters without affecting performance.
-- **Apply bucket to encode relative positions** In v2 we use log bucket to encode relative positions similar to T5. 
+- **Apply bucket to encode relative positions** In v2 we use log bucket to encode relative positions similar to T5.
 - **900M model & 1.5B model** In v2 we scale our model size to 900M and 1.5B which significantly improves the performance of downstream tasks.
 
 ### 12/29/2020
 With DeBERTa 1.5B model, we surpass T5 11B model and human performance on SuperGLUE leaderboard. Code and model will be released soon. Please check out our paper for more details.
 
 ### 06/13/2020
-We released the pre-trained models, source code, and fine-tuning scripts to reproduce some of the experimental results in the paper. You can follow similar scripts to apply DeBERTa to your own experiments or applications. Pre-training scripts will be released in the next step. 
+We released the pre-trained models, source code, and fine-tuning scripts to reproduce some of the experimental results in the paper. You can follow similar scripts to apply DeBERTa to your own experiments or applications. Pre-training scripts will be released in the next step.
 
 
-## Introduction to DeBERTa 
+## Introduction to DeBERTa
 DeBERTa (Decoding-enhanced BERT with disentangled attention) improves the BERT and RoBERTa models using two novel techniques. The first is the disentangled attention mechanism, where each word is represented using two vectors that encode its content and position, respectively, and the attention weights among words are computed using disentangled matrices on their contents and relative positions. Second, an enhanced mask decoder is used to replace the output softmax layer to predict the masked tokens for model pretraining. We show that these two techniques significantly improve the efficiency of model pre-training and performance of downstream tasks.
 
 # Pre-trained Models
@@ -63,8 +63,8 @@ Our pre-trained models are packaged into zipped files. You can download them fro
 |[DeBERTa-V3-XSmall](https://huggingface.co/microsoft/deberta-v3-xsmall)<sup>2</sup>|128|22|384| 12| 128K new SPM vocab|
 |[mDeBERTa-V3-Base](https://huggingface.co/microsoft/mdeberta-v3-base)<sup>2</sup>|250|86|768| 12| 250K new SPM vocab, multi-lingual model with 102 languages|
 
-## Note 
-- 1 This is the model(89.9) that surpassed **T5 11B(89.3) and human performance(89.8)** on **SuperGLUE** for the first time. 128K new SPM vocab. 
+## Note
+- 1 This is the model(89.9) that surpassed **T5 11B(89.3) and human performance(89.8)** on **SuperGLUE** for the first time. 128K new SPM vocab.
 - 2 These V3 DeBERTa models are deberta models pre-trained with ELECTRA-style objective plus gradient-disentangled embedding sharing which significantly improves the model efficiency.
 
 
@@ -87,7 +87,7 @@ There are several ways to try our code,
 
 Docker is the recommended way to run the code as we already built every dependency into our docker [bagai/deberta](https://hub.docker.com/r/bagai/deberta) and you can follow the [docker official site](https://docs.docker.com/engine/install/ubuntu/) to install docker on your machine.
 
-To run with docker, make sure your system fulfills the requirements in the above list. Here are the steps to try the GLUE experiments: Pull the code, run `./run_docker.sh` 
+To run with docker, make sure your system fulfills the requirements in the above list. Here are the steps to try the GLUE experiments: Pull the code, run `./run_docker.sh`
 , and then you can run the bash commands under `/DeBERTa/experiments/glue/`
 
 
@@ -111,20 +111,20 @@ class MyModel(torch.nn.Module):
     self.deberta = deberta.DeBERTa(pre_trained='base') # Or 'large' 'base-mnli' 'large-mnli' 'xlarge' 'xlarge-mnli' 'xlarge-v2' 'xxlarge-v2'
     # Your existing model code
     # do inilization as before
-    # 
+    #
     self.deberta.apply_state() # Apply the pre-trained model of DeBERTa at the end of the constructor
     #
   def forward(self, input_ids):
     # The inputs to DeBERTa forward are
     # `input_ids`: a torch.LongTensor of shape [batch_size, sequence_length] with the word token indices in the vocabulary
-    # `token_type_ids`: an optional torch.LongTensor of shape [batch_size, sequence_length] with the token types indices selected in [0, 1]. 
+    # `token_type_ids`: an optional torch.LongTensor of shape [batch_size, sequence_length] with the token types indices selected in [0, 1].
     #    Type 0 corresponds to a `sentence A` and type 1 corresponds to a `sentence B` token (see BERT paper for more details).
-    # `attention_mask`: an optional parameter for input mask or attention mask. 
-    #   - If it's an input mask, then it will be torch.LongTensor of shape [batch_size, sequence_length] with indices selected in [0, 1]. 
-    #      It's a mask to be used if the input sequence length is smaller than the max input sequence length in the current batch. 
+    # `attention_mask`: an optional parameter for input mask or attention mask.
+    #   - If it's an input mask, then it will be torch.LongTensor of shape [batch_size, sequence_length] with indices selected in [0, 1].
+    #      It's a mask to be used if the input sequence length is smaller than the max input sequence length in the current batch.
     #      It's the mask that we typically use for attention when a batch has varying length sentences.
-    #   - If it's an attention mask then if will be torch.LongTensor of shape [batch_size, sequence_length, sequence_length]. 
-    #      In this case, it's a mask indicating which tokens in the sequence should be attended by other tokens in the sequence. 
+    #   - If it's an attention mask then if will be torch.LongTensor of shape [batch_size, sequence_length, sequence_length].
+    #      In this case, it's a mask indicating which tokens in the sequence should be attended by other tokens in the sequence.
     # `output_all_encoded_layers`: whether to output results of all encoder layers, default, True
     encoding = deberta.bert(input_ids)[-1]
 
@@ -153,7 +153,7 @@ features = {
 ```
 
 #### Run DeBERTa experiments from command line
-For glue tasks, 
+For glue tasks,
 1. Get the data
 ``` bash
 cache_dir=/tmp/DeBERTa/
@@ -164,7 +164,7 @@ cd experiments/glue
 2. Run task
 
 ``` bash
-task=STS-B 
+task=STS-B
 OUTPUT=/tmp/DeBERTa/exps/$task
 export OMP_NUM_THREADS=1
 python3 -m DeBERTa.apps.run --task_name $task --do_train  \
@@ -174,7 +174,7 @@ python3 -m DeBERTa.apps.run --task_name $task --do_train  \
   --output_dir $OUTPUT \
   --scale_steps 250 \
   --loss_scale 16384 \
-  --accumulative_update 1 \  
+  --accumulative_update 1 \
   --num_train_epochs 6 \
   --warmup 100 \
   --learning_rate 2e-5 \
@@ -187,7 +187,7 @@ python3 -m DeBERTa.apps.run --task_name $task --do_train  \
 - 2. You can also try our models with [HF Transformers](https://github.com/huggingface/transformers). But when you try XXLarge model you need to specify --sharded_ddp argument. Please check our [XXLarge model card](https://huggingface.co/microsoft/deberta-xxlarge-v2) for more details.
 
 ## Experiments
-Our fine-tuning experiments are carried on half a DGX-2 node with 8x32 V100 GPU cards, the results may vary due to different GPU models, drivers, CUDA SDK versions, using FP16 or FP32, and random seeds. 
+Our fine-tuning experiments are carried on half a DGX-2 node with 8x32 V100 GPU cards, the results may vary due to different GPU models, drivers, CUDA SDK versions, using FP16 or FP32, and random seeds.
 We report our numbers based on multiple runs with different random seeds here. Here are the results from the Large model:
 
 |Task	 |Command	|Results	|Running Time(8x32G V100 GPUs)|
@@ -234,7 +234,7 @@ We present the dev results on SQuAD 1.1/2.0 and several GLUE benchmark tasks.
 
 We present the dev results on XNLI with zero-shot crosslingual transfer setting, i.e. training with english data only, test on other languages.
 
-| Model        |avg | en |  fr| es  | de  | el  | bg  | ru  |tr   |ar   |vi   | th  | zh | hi  | sw  | ur  | 
+| Model        |avg | en |  fr| es  | de  | el  | bg  | ru  |tr   |ar   |vi   | th  | zh | hi  | sw  | ur  |
 |--------------| ----|----|----|---- |--   |--   |--   | --  |--   |--   |--   | --  | -- | --  | --  | --  |
 | XLM-R-base   |76.2 |85.8|79.7|80.7 |78.7 |77.5 |79.6 |78.1 |74.2 |73.8 |76.5 |74.6 |76.7| 72.4| 66.5| 68.3|
 | [mDeBERTa-V3-Base](https://huggingface.co/microsoft/mdeberta-v3-base)|**79.8**+/-0.2|**88.2**|**82.6**|**84.4** |**82.7** |**82.3** |**82.4** |**80.8** |**79.5** |**78.5** |**78.1** |**76.4** |**79.5**| **75.9**| **73.9**| **72.4**|
@@ -247,7 +247,7 @@ We present the dev results on XNLI with zero-shot crosslingual transfer setting,
 
 To pre-train DeBERTa with MLM and RTD objectives, please check [`experiments/language_models`](experiments/language_model)
 
- 
+
 ## Contacts
 
 Pengcheng He(penhe@microsoft.com), Xiaodong Liu(xiaodl@microsoft.com), Jianfeng Gao(jfgao@microsoft.com), Weizhu Chen(wzchen@microsoft.com)
@@ -255,7 +255,7 @@ Pengcheng He(penhe@microsoft.com), Xiaodong Liu(xiaodl@microsoft.com), Jianfeng 
 # Citation
 ``` latex
 @misc{he2021debertav3,
-      title={DeBERTaV3: Improving DeBERTa using ELECTRA-Style Pre-Training with Gradient-Disentangled Embedding Sharing}, 
+      title={DeBERTaV3: Improving DeBERTa using ELECTRA-Style Pre-Training with Gradient-Disentangled Embedding Sharing},
       author={Pengcheng He and Jianfeng Gao and Weizhu Chen},
       year={2021},
       eprint={2111.09543},

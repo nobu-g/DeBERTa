@@ -2,16 +2,13 @@
 # Author: penhe@microsoft.com
 # Date: 04/25/2021
 #
-""" Replaced token detection model for representation learning
+"""Replaced token detection model for representation learning
 """
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 
 import torch
-import torch.nn as nn
+from torch import nn
+
 from ...deberta import *
 
 __all__ = ["LMMaskPredictionHead", "ReplacedTokenDetectionModel"]
@@ -23,11 +20,7 @@ class LMMaskPredictionHead(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.transform_act_fn = (
-            ACT2FN[config.hidden_act]
-            if isinstance(config.hidden_act, str)
-            else config.hidden_act
-        )
+        self.transform_act_fn = ACT2FN[config.hidden_act] if isinstance(config.hidden_act, str) else config.hidden_act
         self.LayerNorm = LayerNorm(config.hidden_size, config.layer_norm_eps)
         self.classifier = nn.Linear(config.hidden_size, 1)
 

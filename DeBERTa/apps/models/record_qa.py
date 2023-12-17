@@ -7,13 +7,12 @@
 # Date: 01/25/2019
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import math
+
 import torch
 from torch.nn import BCEWithLogitsLoss
+
 from ...deberta import *
 from ...utils import *
 
@@ -57,9 +56,7 @@ class ReCoRDQAModel(NNModule):
         # bxexspxd
         entities = torch.gather(
             tokens.unsqueeze(1).expand(entity_indice.size()[:2] + tokens.size()[1:]),
-            index=entity_indice.long()
-            .unsqueeze(-1)
-            .expand(entity_indice.size() + (tokens.size(-1),)),
+            index=entity_indice.long().unsqueeze(-1).expand(entity_indice.size() + (tokens.size(-1),)),
             dim=-2,
         )
         ctx = tokens[:, :1, :] / math.sqrt(tokens.size(-1))
@@ -67,17 +64,12 @@ class ReCoRDQAModel(NNModule):
         att_score = torch.matmul(tokens, ctx.transpose(-1, -2))
         # bxexspx1
         entity_score = torch.gather(
-            att_score.unsqueeze(1).expand(
-                entity_indice.size()[:2] + att_score.size()[1:]
-            ),
-            index=entity_indice.long()
-            .unsqueeze(-1)
-            .expand(entity_indice.size() + (att_score.size(-1),)),
+            att_score.unsqueeze(1).expand(entity_indice.size()[:2] + att_score.size()[1:]),
+            index=entity_indice.long().unsqueeze(-1).expand(entity_indice.size() + (att_score.size(-1),)),
             dim=-2,
         )
         entity_score = (
-            entity_score.squeeze(-1) * entity_mask.to(entity_score)
-            - (1 - entity_mask.to(entity_score)) * 10000.0
+            entity_score.squeeze(-1) * entity_mask.to(entity_score) - (1 - entity_mask.to(entity_score)) * 10000.0
         )
         att_prob = torch.nn.functional.softmax(entity_score, dim=-1).unsqueeze(-2)
         # bxexd

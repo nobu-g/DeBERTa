@@ -1,13 +1,12 @@
-"""
-Byte pair encoding utilities from GPT-2.
+"""Byte pair encoding utilities from GPT-2.
 
 Original source: https://github.com/openai/gpt-2/blob/master/src/encoder.py
 Original license: MIT
 """
 
-from functools import lru_cache
 import random
 import unicodedata
+from functools import lru_cache
 
 try:
     import regex as re
@@ -15,10 +14,9 @@ except ImportError:
     raise ImportError("Please install regex with: pip install regex")
 
 
-@lru_cache()
+@lru_cache
 def bytes_to_unicode():
-    """
-    Returns list of utf-8 byte and a corresponding list of unicode strings.
+    """Returns list of utf-8 byte and a corresponding list of unicode strings.
     The reversible bpe codes work on unicode strings.
     This means you need a large # of unicode characters in your vocab if you want to avoid UNKs.
     When you're at something like a 10B token dataset you end up needing around 5K for decent coverage.
@@ -26,11 +24,7 @@ def bytes_to_unicode():
     To avoid that, we want lookup tables between utf-8 bytes and unicode strings.
     And avoids mapping to whitespace/control characters the bpe code barfs on.
     """
-    bs = (
-        list(range(ord("!"), ord("~") + 1))
-        + list(range(ord("¡"), ord("¬") + 1))
-        + list(range(ord("®"), ord("ÿ") + 1))
-    )
+    bs = list(range(ord("!"), ord("~") + 1)) + list(range(ord("¡"), ord("¬") + 1)) + list(range(ord("®"), ord("ÿ") + 1))
     cs = bs[:]
     n = 0
     for b in range(2**8):
@@ -61,16 +55,12 @@ class Encoder:
         self.errors = errors  # how to handle errors in decoding
         self.byte_encoder = bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
-        self.bpe_ranks = dict(
-            zip([tuple(k) for k in bpe_merges], range(len(bpe_merges)))
-        )
+        self.bpe_ranks = dict(zip([tuple(k) for k in bpe_merges], range(len(bpe_merges))))
         self.cache = {}
         self.random = random.Random(0)
 
         # Should haved added re.IGNORECASE so BPE merges can happen for capitalized versions of contractions
-        self.pat = re.compile(
-            r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-        )
+        self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
     def bpe(self, token):
         if token in self.cache:
@@ -120,16 +110,12 @@ class Encoder:
         bpe_tokens = []
         for token in self.split_to_words(text):
             token = "".join(self.byte_encoder[b] for b in token.encode("utf-8"))
-            bpe_tokens.extend(
-                self.encoder[bpe_token] for bpe_token in self.bpe(token).split(" ")
-            )
+            bpe_tokens.extend(self.encoder[bpe_token] for bpe_token in self.bpe(token).split(" "))
         return bpe_tokens
 
     def decode(self, tokens):
         text = "".join([self.decoder[token] for token in tokens])
-        text = bytearray([self.byte_decoder[c] for c in text]).decode(
-            "utf-8", errors=self.errors
-        )
+        text = bytearray([self.byte_decoder[c] for c in text]).decode("utf-8", errors=self.errors)
         return text
 
 
@@ -171,12 +157,7 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if (
-        (cp >= 33 and cp <= 47)
-        or (cp >= 58 and cp <= 64)
-        or (cp >= 91 and cp <= 96)
-        or (cp >= 123 and cp <= 126)
-    ):
+    if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):

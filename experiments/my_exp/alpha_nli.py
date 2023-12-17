@@ -3,20 +3,20 @@
 # Date: 01/25/2019
 #
 
-from collections import OrderedDict
-from scipy.special import softmax
-import numpy as np
 import os
-
 import random
+from collections import OrderedDict
+
+import numpy as np
 import torch
 import ujson as json
-from DeBERTa.apps.tasks.metrics import *
 from DeBERTa.apps.tasks import EvalData, Task, register_task
-from DeBERTa.data import ExampleInstance, ExampleSet, DynamicDataset
+from DeBERTa.apps.tasks.metrics import *
+from DeBERTa.data import DynamicDataset, ExampleInstance, ExampleSet
 from DeBERTa.data.example import *
-from DeBERTa.utils import get_logger
 from DeBERTa.data.example import _truncate_segments
+from DeBERTa.utils import get_logger
+from scipy.special import softmax
 
 logger = get_logger()
 
@@ -32,9 +32,7 @@ class AlphaNLITask(Task):
         super().__init__(tokenizer, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         train = self.load_data(os.path.join(self.data_dir, "train"))
         examples = ExampleSet(train)
         if dataset_size is None:
@@ -105,7 +103,7 @@ class AlphaNLITask(Task):
 
     def get_predict_fn(self):
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(output_dir, "submit-{}-{}.tsv".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.tsv")
             probs = softmax(logits, -1)[:, 1]
             probs = np.reshape(probs, (len(logits) // 2, 2))
             preds = np.argmax(probs, axis=-1)
@@ -181,17 +179,13 @@ class AlphaNLITask(Task):
 
         ctx_token_size = [len(e.segments[0]) for e in examples]
         opt1_token_size = [len(e.segments[1]) for e in examples]
-        total_size = [
-            len(s) + len(e.segments[0]) for e in examples for s in e.segments[1:]
-        ]
+        total_size = [len(s) + len(e.segments[0]) for e in examples for s in e.segments[1:]]
         logger.info(
             f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
         )
         # logger.info(f'Question statistics: {get_stats(q_token_size)}')
         logger.info(f"Opt1 statistics: {get_stats(opt1_token_size)}")
-        logger.info(
-            f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}"
-        )
+        logger.info(f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}")
 
         return examples
 
@@ -235,9 +229,7 @@ class AlphaNLITask(Task):
         for f in features:
             features[f] = torch.tensor(features[f], dtype=torch.int)
 
-        if (
-            example.label is not None
-        ):  # and example.label[0]>=0 and example.label[1]>=0:
+        if example.label is not None:  # and example.label[0]>=0 and example.label[1]>=0:
             label_type = torch.int if label_type == "int" else torch.float
             features["labels"] = torch.tensor(example.label, dtype=label_type)
         return features

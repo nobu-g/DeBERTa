@@ -1,9 +1,10 @@
 import copy
+
 from torch import nn
-from .config import ModelConfig
-from .cache_utils import load_model_state
 
 from ..utils import get_logger
+from .cache_utils import load_model_state
+from .config import ModelConfig
 
 logger = get_logger()
 
@@ -14,11 +15,11 @@ class NNModule(nn.Module):
     """ An abstract class to handle weights initialization and \
     a simple interface for dowloading and loading pretrained models.
 
-  Args:
-    
+    Args:
+    ----
     config (:obj:`~DeBERTa.deberta.ModelConfig`): The model config to the module
 
-  """
+    """
 
     def __init__(self, config, *inputs, **kwargs):
         super().__init__()
@@ -28,7 +29,7 @@ class NNModule(nn.Module):
         """Apply Gaussian(mean=0, std=`config.initializer_range`) initialization to the module.
 
         Args:
-
+        ----
           module (:obj:`torch.nn.Module`): The module to apply the initialization.
 
         Example::
@@ -67,7 +68,7 @@ class NNModule(nn.Module):
         """Instantiate a sub-class of NNModule from a pre-trained model file.
 
         Args:
-
+        ----
           model_path (:obj:`str`): Path or name of the pre-trained model which can be either,
 
             - The path of pre-trained model
@@ -91,7 +92,7 @@ class NNModule(nn.Module):
           cache_dir (:obj:`str`, optional): The cache directory used to save the downloaded models, default: `None`. If it's `None`, then the models will be saved at `$HOME/.~DeBERTa`
 
         Return:
-
+        ------
           :obj:`NNModule` : The sub-class object.
 
         """
@@ -102,14 +103,10 @@ class NNModule(nn.Module):
             config = None
         model_config = None
         model_state = None
-        if (model_path is not None) and (
-            model_path.strip() == "-" or model_path.strip() == ""
-        ):
+        if (model_path is not None) and (model_path.strip() == "-" or model_path.strip() == ""):
             model_path = None
         try:
-            model_state, model_config = load_model_state(
-                model_path, tag=tag, no_cache=no_cache, cache_dir=cache_dir
-            )
+            model_state, model_config = load_model_state(model_path, tag=tag, no_cache=no_cache, cache_dir=cache_dir)
         except Exception as exp:
             raise Exception(f"Failed to get model {model_path}. Exception: {exp}")
 
@@ -160,7 +157,5 @@ class NNModule(nn.Module):
                     load(child, prefix + name + ".")
 
         load(model)
-        logger.warning(
-            f"Missing keys: {missing_keys}, unexpected_keys: {unexpected_keys}, error_msgs: {error_msgs}"
-        )
+        logger.warning(f"Missing keys: {missing_keys}, unexpected_keys: {unexpected_keys}, error_msgs: {error_msgs}")
         return model

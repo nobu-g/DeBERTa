@@ -1,4 +1,4 @@
-# SiFT (Scale Invariant Fine-Tuning) 
+# SiFT (Scale Invariant Fine-Tuning)
 
 ## Usage
 

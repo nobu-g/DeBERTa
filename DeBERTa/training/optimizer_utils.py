@@ -6,11 +6,13 @@
 # Date: 05/15/2019
 #
 
-from collections import defaultdict
-import numpy as np
-from functools import cmp_to_key
 import re
-from ..optims import Fp16Optimizer, XAdam, ExpLossScaler, get_world_size
+from collections import defaultdict
+from functools import cmp_to_key
+
+import numpy as np
+
+from ..optims import ExpLossScaler, Fp16Optimizer, XAdam, get_world_size
 from ..utils import get_logger
 
 logger = get_logger()
@@ -27,14 +29,10 @@ def xadam_factory(args, training_steps=None):
             b2=args.adam_beta2,
             lr_ends=args.lr_schedule_ends,
             e=args.epsilon,
-            warmup=args.warmup_proportion
-            if args.warmup_proportion < 1
-            else args.warmup_proportion / training_steps,
+            warmup=args.warmup_proportion if args.warmup_proportion < 1 else args.warmup_proportion / training_steps,
             t_total=training_steps,
             schedule=args.lr_schedule,
-            max_grad_norm=args.max_grad_norm
-            if max_grad_norm is None
-            else max_grad_norm,
+            max_grad_norm=args.max_grad_norm if max_grad_norm is None else max_grad_norm,
             weight_decay_rate=args.weight_decay,
             with_radam=with_radam,
             opt_type=opt_type,
@@ -45,13 +43,9 @@ def xadam_factory(args, training_steps=None):
     return optimizer_fn
 
 
-def create_xoptimizer(
-    model, args, num_train_steps=None, no_decay=["bias", "LayerNorm.weight"]
-):
+def create_xoptimizer(model, args, num_train_steps=None, no_decay=["bias", "LayerNorm.weight"]):
     if args.fp16:
-        loss_scaler = ExpLossScaler(
-            scale_interval=args.scale_steps, init_scale=args.loss_scale
-        )
+        loss_scaler = ExpLossScaler(scale_interval=args.scale_steps, init_scale=args.loss_scale)
     else:
         loss_scaler = None
 
@@ -61,11 +55,7 @@ def create_xoptimizer(
     if world_size <= 1:
         distributed_optimizer = False
 
-    _no_decay = [
-        x.strip()
-        for x in getattr(args, "no_decay", "").split("|")
-        if len(x.strip()) > 0
-    ]
+    _no_decay = [x.strip() for x in getattr(args, "no_decay", "").split("|") if len(x.strip()) > 0]
     if len(_no_decay) > 0:
         no_decay = _no_decay
 
@@ -105,9 +95,7 @@ def create_xoptimizer(
         i += 1
         chunks.append(flat.narrow(0, i * max_size, flat.size(0) - i * max_size))
         offsets.append([i * max_size, flat.size(0) - i * max_size])
-        assert (
-            sum([c.numel() for c in chunks]) == param.numel()
-        ), f"{param.numel()}: {offsets}"
+        assert sum([c.numel() for c in chunks]) == param.numel(), f"{param.numel()}: {offsets}"
         return chunks, offsets
 
     def param_cmp(x, y):
@@ -137,9 +125,9 @@ def create_xoptimizer(
     for n, p in named_params:
         key = ""
         if any(re.search(nd, n) for nd in no_decay):
-            key += f"{str(p.dtype)}-nd"
+            key += f"{p.dtype!s}-nd"
         else:
-            key += f"{str(p.dtype)}-d"
+            key += f"{p.dtype!s}-d"
         type_groups[key].append((n, p))
     param_groups = []
     for key, params in type_groups.items():

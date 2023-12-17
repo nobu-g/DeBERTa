@@ -1,12 +1,11 @@
-"""
-Official evaluation script for ReCoRD v1.0.
+"""Official evaluation script for ReCoRD v1.0.
 (Some functions are adopted from the SQuAD evaluation script.)
 """
 
-from __future__ import print_function
-from collections import Counter
-import string
 import re
+import string
+from collections import Counter
+
 from ...utils import get_logger
 
 logger = get_logger()
@@ -64,16 +63,14 @@ def evaluate(answers, predictions):
     for qid in answers:
         total += 1
         if qid not in predictions:
-            message = "Unanswered question {} will receive score 0.".format(qid)
+            message = f"Unanswered question {qid} will receive score 0."
             logger.warning(message)
             continue
 
         ground_truths = list(map(lambda x: x["text"], answers[qid]))
         prediction = predictions[qid]
 
-        _exact_match = metric_max_over_ground_truths(
-            exact_match_score, prediction, ground_truths
-        )
+        _exact_match = metric_max_over_ground_truths(exact_match_score, prediction, ground_truths)
         if int(_exact_match) == 1:
             correct_ids.append(qid)
         exact_match += _exact_match

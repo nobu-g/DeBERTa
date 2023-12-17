@@ -59,7 +59,7 @@ MaskedLayerNorm
 
 GPT2Tokenizer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
- 
+
 .. autoclass:: DeBERTa.deberta.GPT2Tokenizer
     :members:
 

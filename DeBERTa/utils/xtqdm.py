@@ -1,5 +1,6 @@
-from tqdm import tqdm
 import os
+
+from tqdm import tqdm
 
 __all__ = ["xtqdm"]
 

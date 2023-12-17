@@ -8,10 +8,12 @@
 
 import os
 import signal
-import torch
 from multiprocessing import Pool
+
 import psutil
-from ..utils import set_logger, get_logger
+import torch
+
+from ..utils import get_logger, set_logger
 
 logger = get_logger()
 
@@ -46,7 +48,6 @@ def get_ngpu():
 
 def _setup_distributed_group(args):
     """Initialize torch.distributed."""
-
     torch.backends.cudnn.enabled = False
     if args.world_size == 1:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -145,9 +146,7 @@ def test_dist_launch():
         global logger
         set_logger(
             args.task_name,
-            os.path.join(
-                args.output_dir, f"training_{args.task_name}_{args.node_rank}.log"
-            ),
+            os.path.join(args.output_dir, f"training_{args.task_name}_{args.node_rank}.log"),
             rank=args.rank,
         )
         logger.info(args)

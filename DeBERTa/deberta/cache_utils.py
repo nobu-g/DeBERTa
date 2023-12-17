@@ -7,13 +7,15 @@
 # Date: 05/15/2020
 #
 
-import torch
 import os
-import requests
-from .config import ModelConfig
 import pathlib
-from ..utils import xtqdm as tqdm
+
+import requests
+import torch
+
 from ..utils import get_logger
+from ..utils import xtqdm as tqdm
+from .config import ModelConfig
 
 logger = get_logger()
 
@@ -79,9 +81,7 @@ def download_asset(url, name, tag=None, no_cache=False, cache_dir=None):
     try:
         with open(output, "wb") as fs:
             progress = tqdm(
-                total=int(resp.headers["Content-Length"])
-                if "Content-Length" in resp.headers
-                else -1,
+                total=int(resp.headers["Content-Length"]) if "Content-Length" in resp.headers else -1,
                 ncols=80,
                 desc=f"Downloading {name}",
             )
@@ -98,19 +98,13 @@ def download_asset(url, name, tag=None, no_cache=False, cache_dir=None):
 
 def load_model_state(path_or_pretrained_id, tag=None, no_cache=False, cache_dir=None):
     model_path = path_or_pretrained_id
-    if (
-        model_path
-        and (not os.path.exists(model_path))
-        and (path_or_pretrained_id.lower() in pretrained_models)
-    ):
+    if model_path and (not os.path.exists(model_path)) and (path_or_pretrained_id.lower() in pretrained_models):
         _tag = tag
         pretrained = pretrained_models[path_or_pretrained_id.lower()]
         if _tag is None:
             _tag = "latest"
         if not cache_dir:
-            cache_dir = os.path.join(
-                pathlib.Path.home(), f".~DeBERTa/assets/{_tag}/{pretrained.name}"
-            )
+            cache_dir = os.path.join(pathlib.Path.home(), f".~DeBERTa/assets/{_tag}/{pretrained.name}")
         os.makedirs(cache_dir, exist_ok=True)
         model_path = os.path.join(cache_dir, "pytorch_model.bin")
         if (not os.path.exists(model_path)) or no_cache:
@@ -133,7 +127,7 @@ def load_model_state(path_or_pretrained_id, tag=None, no_cache=False, cache_dir=
 
     config_path = os.path.join(os.path.dirname(model_path), "model_config.json")
     model_state = torch.load(model_path, map_location="cpu")
-    logger.info("Loaded pretrained model file {}".format(model_path))
+    logger.info(f"Loaded pretrained model file {model_path}")
     if "config" in model_state:
         model_config = ModelConfig.from_dict(model_state["config"])
     elif os.path.exists(config_path):
@@ -158,18 +152,14 @@ def load_vocab(
 
         pretrained = pretrained_models[pretrained_id.lower()]
         if not cache_dir:
-            cache_dir = os.path.join(
-                pathlib.Path.home(), f".~DeBERTa/assets/{_tag}/{pretrained.name}"
-            )
+            cache_dir = os.path.join(pathlib.Path.home(), f".~DeBERTa/assets/{_tag}/{pretrained.name}")
         os.makedirs(cache_dir, exist_ok=True)
         vocab_type = pretrained.vocab_type
         url = pretrained.vocab_url
         outname = os.path.basename(url)
         vocab_path = os.path.join(cache_dir, outname)
         if (not os.path.exists(vocab_path)) or no_cache:
-            asset = download_asset(
-                url, outname, tag=tag, no_cache=no_cache, cache_dir=cache_dir
-            )
+            asset = download_asset(url, outname, tag=tag, no_cache=no_cache, cache_dir=cache_dir)
     if vocab_type is None:
         vocab_type = "spm"
     return vocab_path, vocab_type

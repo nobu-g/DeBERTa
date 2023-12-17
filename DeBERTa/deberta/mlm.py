@@ -9,7 +9,7 @@
 import torch
 from torch import nn
 
-from .bert import LayerNorm, ACT2FN
+from .bert import ACT2FN, LayerNorm
 
 __all__ = ["MLMPredictionHead"]
 
@@ -19,11 +19,7 @@ class MLMPredictionHead(nn.Module):
         super().__init__()
         self.embedding_size = getattr(config, "embedding_size", config.hidden_size)
         self.dense = nn.Linear(config.hidden_size, self.embedding_size)
-        self.transform_act_fn = (
-            ACT2FN[config.hidden_act]
-            if isinstance(config.hidden_act, str)
-            else config.hidden_act
-        )
+        self.transform_act_fn = ACT2FN[config.hidden_act] if isinstance(config.hidden_act, str) else config.hidden_act
 
         self.LayerNorm = LayerNorm(self.embedding_size, config.layer_norm_eps)
         self.bias = nn.Parameter(torch.zeros(vocab_size))
@@ -37,8 +33,5 @@ class MLMPredictionHead(nn.Module):
         hidden_states = MaskedLayerNorm(self.LayerNorm, hidden_states)
 
         # b x s x v
-        logits = (
-            torch.matmul(hidden_states, embeding_weight.t().to(hidden_states))
-            + self.bias
-        )
+        logits = torch.matmul(hidden_states, embeding_weight.t().to(hidden_states)) + self.bias
         return logits

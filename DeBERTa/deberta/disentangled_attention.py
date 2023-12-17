@@ -7,18 +7,17 @@
 # Date: 01/15/2020
 #
 
-"""
-  Disentangled SelfAttention module
+"""Disentangled SelfAttention module
 """
 
 import math
+
 import torch
 from torch import nn
 
-from .ops import *
-from .da_utils import build_relative_position
-
 from ..utils import get_logger
+from .da_utils import build_relative_position
+from .ops import *
 
 logger = get_logger()
 
@@ -30,18 +29,14 @@ class DisentangledSelfAttention(nn.Module):
         super().__init__()
         self.num_attention_heads = config.num_attention_heads
         _attention_head_size = int(config.hidden_size / config.num_attention_heads)
-        self.attention_head_size = getattr(
-            config, "attention_head_size", _attention_head_size
-        )
+        self.attention_head_size = getattr(config, "attention_head_size", _attention_head_size)
         self.all_head_size = self.num_attention_heads * self.attention_head_size
         self.query_proj = nn.Linear(config.hidden_size, self.all_head_size, bias=True)
         self.key_proj = nn.Linear(config.hidden_size, self.all_head_size, bias=True)
         self.value_proj = nn.Linear(config.hidden_size, self.all_head_size, bias=True)
 
         self.share_att_key = getattr(config, "share_att_key", False)
-        self.pos_att_type = [
-            x.strip() for x in getattr(config, "pos_att_type", "c2p").lower().split("|")
-        ]  # c2p|p2c
+        self.pos_att_type = [x.strip() for x in getattr(config, "pos_att_type", "c2p").lower().split("|")]  # c2p|p2c
         self.relative_attention = getattr(config, "relative_attention", False)
 
         if self.relative_attention:
@@ -58,13 +53,9 @@ class DisentangledSelfAttention(nn.Module):
 
             if not self.share_att_key:
                 if "c2p" in self.pos_att_type or "p2p" in self.pos_att_type:
-                    self.pos_key_proj = nn.Linear(
-                        config.hidden_size, self.all_head_size, bias=True
-                    )
+                    self.pos_key_proj = nn.Linear(config.hidden_size, self.all_head_size, bias=True)
                 if "p2c" in self.pos_att_type or "p2p" in self.pos_att_type:
-                    self.pos_query_proj = nn.Linear(
-                        config.hidden_size, self.all_head_size
-                    )
+                    self.pos_query_proj = nn.Linear(config.hidden_size, self.all_head_size)
 
         self.dropout = StableDropout(config.attention_probs_dropout_prob)
         self._register_load_state_dict_pre_hook(self._pre_load_hook)
@@ -85,15 +76,9 @@ class DisentangledSelfAttention(nn.Module):
     ):
         if query_states is None:
             query_states = hidden_states
-        query_layer = self.transpose_for_scores(
-            self.query_proj(query_states), self.num_attention_heads
-        ).float()
-        key_layer = self.transpose_for_scores(
-            self.key_proj(hidden_states), self.num_attention_heads
-        ).float()
-        value_layer = self.transpose_for_scores(
-            self.value_proj(hidden_states), self.num_attention_heads
-        )
+        query_layer = self.transpose_for_scores(self.query_proj(query_states), self.num_attention_heads).float()
+        key_layer = self.transpose_for_scores(self.key_proj(hidden_states), self.num_attention_heads).float()
+        value_layer = self.transpose_for_scores(self.value_proj(hidden_states), self.num_attention_heads)
 
         rel_att = None
         # Take the dot product between "query" and "key" to get the raw attention scores.
@@ -114,10 +99,9 @@ class DisentangledSelfAttention(nn.Module):
 
         if rel_att is not None:
             attention_scores = attention_scores + rel_att
-        attention_scores = (
-            attention_scores
-            - attention_scores.max(dim=-1, keepdim=True).values.detach()
-        ).to(hidden_states)
+        attention_scores = (attention_scores - attention_scores.max(dim=-1, keepdim=True).values.detach()).to(
+            hidden_states
+        )
         attention_scores = attention_scores.view(
             -1,
             self.num_attention_heads,
@@ -129,9 +113,7 @@ class DisentangledSelfAttention(nn.Module):
         _attention_probs = XSoftmax.apply(attention_scores, attention_mask, -1)
         attention_probs = self.dropout(_attention_probs)
         context_layer = torch.bmm(
-            attention_probs.view(
-                -1, attention_probs.size(-2), attention_probs.size(-1)
-            ),
+            attention_probs.view(-1, attention_probs.size(-2), attention_probs.size(-1)),
             value_layer,
         )
         context_layer = (
@@ -153,9 +135,7 @@ class DisentangledSelfAttention(nn.Module):
             "attention_logits": attention_scores,
         }
 
-    def disentangled_attention_bias(
-        self, query_layer, key_layer, relative_pos, rel_embeddings, scale_factor
-    ):
+    def disentangled_attention_bias(self, query_layer, key_layer, relative_pos, rel_embeddings, scale_factor):
         if relative_pos is None:
             q = query_layer.size(-2)
             relative_pos = build_relative_position(
@@ -171,54 +151,40 @@ class DisentangledSelfAttention(nn.Module):
             relative_pos = relative_pos.unsqueeze(1)
         # bxhxqxk
         elif relative_pos.dim() != 4:
-            raise ValueError(
-                f"Relative postion ids must be of dim 2 or 3 or 4. {relative_pos.dim()}"
-            )
+            raise ValueError(f"Relative postion ids must be of dim 2 or 3 or 4. {relative_pos.dim()}")
 
         att_span = self.pos_ebd_size
         relative_pos = relative_pos.long().to(query_layer.device)
 
-        rel_embeddings = rel_embeddings[
-            self.pos_ebd_size - att_span : self.pos_ebd_size + att_span, :
-        ].unsqueeze(0)  # .repeat(query_layer.size(0)//self.num_attention_heads, 1, 1)
+        rel_embeddings = rel_embeddings[self.pos_ebd_size - att_span : self.pos_ebd_size + att_span, :].unsqueeze(
+            0
+        )  # .repeat(query_layer.size(0)//self.num_attention_heads, 1, 1)
         if self.share_att_key:
             pos_query_layer = self.transpose_for_scores(
                 self.query_proj(rel_embeddings), self.num_attention_heads
-            ).repeat(
-                query_layer.size(0) // self.num_attention_heads, 1, 1
-            )  # .split(self.all_head_size, dim=-1)
-            pos_key_layer = self.transpose_for_scores(
-                self.key_proj(rel_embeddings), self.num_attention_heads
-            ).repeat(
+            ).repeat(query_layer.size(0) // self.num_attention_heads, 1, 1)  # .split(self.all_head_size, dim=-1)
+            pos_key_layer = self.transpose_for_scores(self.key_proj(rel_embeddings), self.num_attention_heads).repeat(
                 query_layer.size(0) // self.num_attention_heads, 1, 1
             )  # .split(self.all_head_size, dim=-1)
         else:
             if "c2p" in self.pos_att_type or "p2p" in self.pos_att_type:
                 pos_key_layer = self.transpose_for_scores(
                     self.pos_key_proj(rel_embeddings), self.num_attention_heads
-                ).repeat(
-                    query_layer.size(0) // self.num_attention_heads, 1, 1
-                )  # .split(self.all_head_size, dim=-1)
+                ).repeat(query_layer.size(0) // self.num_attention_heads, 1, 1)  # .split(self.all_head_size, dim=-1)
             if "p2c" in self.pos_att_type or "p2p" in self.pos_att_type:
                 pos_query_layer = self.transpose_for_scores(
                     self.pos_query_proj(rel_embeddings), self.num_attention_heads
-                ).repeat(
-                    query_layer.size(0) // self.num_attention_heads, 1, 1
-                )  # .split(self.all_head_size, dim=-1)
+                ).repeat(query_layer.size(0) // self.num_attention_heads, 1, 1)  # .split(self.all_head_size, dim=-1)
 
         score = 0
         # content->position
         if "c2p" in self.pos_att_type:
             scale = 1 / math.sqrt(pos_key_layer.size(-1) * scale_factor)
-            c2p_att = torch.bmm(
-                query_layer, pos_key_layer.transpose(-1, -2).to(query_layer) * scale
-            )
+            c2p_att = torch.bmm(query_layer, pos_key_layer.transpose(-1, -2).to(query_layer) * scale)
             c2p_pos = (
                 torch.clamp(relative_pos + att_span, 0, att_span * 2 - 1)
                 .squeeze(0)
-                .expand(
-                    [query_layer.size(0), query_layer.size(1), relative_pos.size(-1)]
-                )
+                .expand([query_layer.size(0), query_layer.size(1), relative_pos.size(-1)])
             )
             c2p_att = torch.gather(c2p_att, dim=-1, index=c2p_pos)
             score += c2p_att
@@ -228,9 +194,7 @@ class DisentangledSelfAttention(nn.Module):
             scale = 1 / math.sqrt(pos_query_layer.size(-1) * scale_factor)
 
         if "p2c" in self.pos_att_type:
-            p2c_att = torch.bmm(
-                pos_query_layer.to(key_layer) * scale, key_layer.transpose(-1, -2)
-            )
+            p2c_att = torch.bmm(pos_query_layer.to(key_layer) * scale, key_layer.transpose(-1, -2))
             p2c_att = torch.gather(p2c_att, dim=-2, index=c2p_pos)
             score += p2c_att
 
@@ -243,9 +207,7 @@ class DisentangledSelfAttention(nn.Module):
                 p2p_att = torch.gather(
                     p2p_att,
                     dim=-2,
-                    index=pos_index.expand(
-                        query_layer.size()[:2] + (pos_index.size(-2), p2p_att.size(-1))
-                    ),
+                    index=pos_index.expand(query_layer.size()[:2] + (pos_index.size(-2), p2p_att.size(-1))),
                 )
             p2p_att = torch.gather(
                 p2p_att,
@@ -274,13 +236,9 @@ class DisentangledSelfAttention(nn.Module):
         error_msgs,
     ):
         self_state = self.state_dict()
-        if ((prefix + "query_proj.weight") not in state_dict) and (
-            (prefix + "in_proj.weight") in state_dict
-        ):
+        if ((prefix + "query_proj.weight") not in state_dict) and ((prefix + "in_proj.weight") in state_dict):
             v1_proj = state_dict[prefix + "in_proj.weight"]
-            v1_proj = v1_proj.unsqueeze(0).reshape(
-                self.num_attention_heads, -1, v1_proj.size(-1)
-            )
+            v1_proj = v1_proj.unsqueeze(0).reshape(self.num_attention_heads, -1, v1_proj.size(-1))
             q, k, v = v1_proj.chunk(3, dim=1)
             state_dict[prefix + "query_proj.weight"] = q.reshape(-1, v1_proj.size(-1))
             state_dict[prefix + "key_proj.weight"] = k.reshape(-1, v1_proj.size(-1))

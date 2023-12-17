@@ -1,5 +1,6 @@
-import torch
 from collections.abc import Sequence
+
+import torch
 
 
 def merge_distributed(data_list, max_len=None):
@@ -10,13 +11,8 @@ def merge_distributed(data_list, max_len=None):
     merged = []
 
     def gather(data):
-        data_size = [
-            torch.zeros(data.dim(), dtype=torch.int).to(data.device)
-            for _ in range(world_size)
-        ]
-        torch.distributed.all_gather(
-            data_size, torch.tensor(data.size()).to(data_size[0])
-        )
+        data_size = [torch.zeros(data.dim(), dtype=torch.int).to(data.device) for _ in range(world_size)]
+        torch.distributed.all_gather(data_size, torch.tensor(data.size()).to(data_size[0]))
         data_chunks = [torch.zeros(tuple(s.cpu().numpy())).to(data) for s in data_size]
         data_chunks[data.device.index] = data
         for i, _chunk in enumerate(data_chunks):
@@ -24,10 +20,7 @@ def merge_distributed(data_list, max_len=None):
         return data_chunks
 
     for data in data_list:
-        if (
-            torch.distributed.is_initialized()
-            and torch.distributed.get_world_size() > 1
-        ):
+        if torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1:
             if isinstance(data, Sequence):
                 data_chunks = []
                 for d in data:

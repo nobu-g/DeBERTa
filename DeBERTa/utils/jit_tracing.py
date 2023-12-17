@@ -1,5 +1,4 @@
-"""
-Logging util
+"""Logging util
 @Author: penhe@microsoft.com
 """
 
@@ -17,7 +16,7 @@ def traceable(cls):
     xxx
     """
 
-    class _Function(object):
+    class _Function:
         @staticmethod
         def apply(*args):
             jit_trace = os.getenv("JIT_TRACE", "False").lower() == "true"

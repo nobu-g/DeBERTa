@@ -6,12 +6,14 @@
 # Date: 05/15/2019
 #
 
-""" Optimizer
+"""Optimizer
 """
 
 import math
+
 import torch
 from torch.optim import Optimizer
+
 from .lr_schedulers import SCHEDULES
 
 
@@ -98,23 +100,17 @@ class XAdam(Optimizer):
         rank=-1,
     ):
         if not lr >= 0.0:
-            raise ValueError("Invalid learning rate: {} - should be >= 0.0".format(lr))
+            raise ValueError(f"Invalid learning rate: {lr} - should be >= 0.0")
         if schedule not in SCHEDULES:
-            raise ValueError("Invalid schedule parameter: {}".format(schedule))
+            raise ValueError(f"Invalid schedule parameter: {schedule}")
         if not 0.0 <= warmup < 1.0 and not warmup == -1:
-            raise ValueError(
-                "Invalid warmup: {} - should be in [0.0, 1.0[ or -1".format(warmup)
-            )
+            raise ValueError(f"Invalid warmup: {warmup} - should be in [0.0, 1.0[ or -1")
         if not 0.0 <= b1 < 1.0:
-            raise ValueError(
-                "Invalid b1 parameter: {} - should be in [0.0, 1.0[".format(b1)
-            )
+            raise ValueError(f"Invalid b1 parameter: {b1} - should be in [0.0, 1.0[")
         if not 0.0 <= b2 < 1.0:
-            raise ValueError(
-                "Invalid b2 parameter: {} - should be in [0.0, 1.0[".format(b2)
-            )
+            raise ValueError(f"Invalid b2 parameter: {b2} - should be in [0.0, 1.0[")
         if not e >= 0.0:
-            raise ValueError("Invalid epsilon value: {} - should be >= 0.0".format(e))
+            raise ValueError(f"Invalid epsilon value: {e} - should be >= 0.0")
         self.defaults = dict(
             lr=lr,
             schedule=schedule,
@@ -137,6 +133,7 @@ class XAdam(Optimizer):
         """Performs a single optimization step.
 
         Arguments:
+        ---------
           grad_scale: divid grad by grad_scale
           lr_scale: scale learning rate by bs_scale
         """
@@ -155,19 +152,11 @@ class XAdam(Optimizer):
             if group["rank"] >= 0 and self.rank >= 0:
                 # sync
                 for param in group["params"]:
-                    out_p = (
-                        param.out_data
-                        if hasattr(param, "out_data") and (param.out_data is not None)
-                        else None
-                    )
+                    out_p = param.out_data if hasattr(param, "out_data") and (param.out_data is not None) else None
                     if out_p is not None:
-                        h = torch.distributed.broadcast(
-                            out_p, group["rank"], async_op=True
-                        )
+                        h = torch.distributed.broadcast(out_p, group["rank"], async_op=True)
                     else:
-                        h = torch.distributed.broadcast(
-                            param.data, group["rank"], async_op=True
-                        )
+                        h = torch.distributed.broadcast(param.data, group["rank"], async_op=True)
                     handels.append(h)
 
         for h in handels:
@@ -179,9 +168,7 @@ class XAdam(Optimizer):
     def get_group_lr_sch(self, group, steps):
         if group["t_total"] > 0:
             schedule_fct = SCHEDULES[group["schedule"]]
-            lr_scheduled = schedule_fct(
-                steps, group["t_total"], group["warmup"], group["lr_ends"]
-            )
+            lr_scheduled = schedule_fct(steps, group["t_total"], group["warmup"], group["lr_ends"])
         else:
             lr_scheduled = 1
         return lr_scheduled
@@ -189,9 +176,7 @@ class XAdam(Optimizer):
     def update_param(self, group, param, grad_scale, lr_scale):
         grad = param.grad
         if grad.is_sparse:
-            raise RuntimeError(
-                "Adam does not support sparse gradients, please consider SparseAdam instead"
-            )
+            raise RuntimeError("Adam does not support sparse gradients, please consider SparseAdam instead")
         state = self.get_state(param)
         lr_sch = self.get_group_lr_sch(group, state["step"])
         lr = group["lr"] * lr_scale * lr_sch
@@ -208,10 +193,7 @@ class XAdam(Optimizer):
             bias_c = 1 / (1 - beta1**t)
             if rou_t > group["radam_th"]:
                 bias_c *= math.sqrt(1 - beta2**t)
-                bias_c *= math.sqrt(
-                    ((rou_t - 4) * (rou_t - 2) * rou_)
-                    / ((rou_ - 4) * (rou_ - 2) * rou_t)
-                )
+                bias_c *= math.sqrt(((rou_t - 4) * (rou_t - 2) * rou_) / ((rou_ - 4) * (rou_ - 2) * rou_t))
             else:
                 eps_mode = 2
                 bias_c = 0
@@ -221,11 +203,7 @@ class XAdam(Optimizer):
             eps_mode |= 0x10
 
         with torch.cuda.device(param.device.index):
-            out_p = (
-                param.out_data
-                if hasattr(param, "out_data") and (param.out_data is not None)
-                else None
-            )
+            out_p = param.out_data if hasattr(param, "out_data") and (param.out_data is not None) else None
             if out_p is None or out_p.dtype != grad.dtype:
                 out_p = torch.tensor([], dtype=torch.float).to(param.data)
 
@@ -247,11 +225,7 @@ class XAdam(Optimizer):
                 weight_decay,
             )
 
-            out_p = (
-                param.out_data
-                if hasattr(param, "out_data") and (param.out_data is not None)
-                else None
-            )
+            out_p = param.out_data if hasattr(param, "out_data") and (param.out_data is not None) else None
             if out_p is not None and out_p.dtype != grad.dtype:
                 out_p.copy_(param.data)
 

@@ -7,17 +7,18 @@
 # Date: 01/25/2019
 #
 
-from collections import OrderedDict, defaultdict
-from scipy.special import softmax
-import numpy as np
 import os
+from collections import OrderedDict, defaultdict
 
+import numpy as np
+from scipy.special import softmax
+
+from ...data import DynamicDataset, ExampleInstance, ExampleSet, example_to_feature
+from ...data.example import *
+from ...utils import get_logger
 from .metrics import *
 from .task import EvalData, Task
 from .task_registry import register_task
-from ...utils import get_logger
-from ...data import ExampleInstance, ExampleSet, DynamicDataset, example_to_feature
-from ...data.example import *
 
 logger = get_logger()
 
@@ -40,22 +41,16 @@ class STSBTask(Task):
         super().__init__(tokenizer, args, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         input_src = os.path.join(self.data_dir, "train.tsv")
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
-        examples = ExampleSet(
-            [ExampleInstance((l[7], l[8]), float(l[9])) for l in data[1:]]
-        )  # if l[3] in ['slate']])
+        examples = ExampleSet([ExampleInstance((l[7], l[8]), float(l[9])) for l in data[1:]])  # if l[3] in ['slate']])
         if dataset_size is None:
             dataset_size = len(examples) * epochs
         return DynamicDataset(
             examples,
-            feature_fn=self.get_feature_fn(
-                max_seq_len=max_seq_len, mask_gen=mask_gen, label_type="float"
-            ),
+            feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, mask_gen=mask_gen, label_type="float"),
             dataset_size=dataset_size,
             shuffle=True,
             **kwargs,
@@ -70,9 +65,7 @@ class STSBTask(Task):
                 _size = dataset_size
             d.data = DynamicDataset(
                 d.data,
-                feature_fn=self.get_feature_fn(
-                    max_seq_len=max_seq_len, label_type="float"
-                ),
+                feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, label_type="float"),
                 dataset_size=_size,
                 **kwargs,
             )
@@ -88,9 +81,7 @@ class STSBTask(Task):
                 _size = dataset_size
             d.data = DynamicDataset(
                 d.data,
-                feature_fn=self.get_feature_fn(
-                    max_seq_len=max_seq_len, label_type="float"
-                ),
+                feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, label_type="float"),
                 dataset_size=_size,
                 **kwargs,
             )
@@ -104,13 +95,9 @@ class STSBTask(Task):
         if type_name == "test":
             examples = ExampleSet([ExampleInstance((l[7], l[8])) for l in data[1:]])
         else:
-            examples = ExampleSet(
-                [ExampleInstance((l[7], l[8]), float(l[9])) for l in data[1:]]
-            )
+            examples = ExampleSet([ExampleInstance((l[7], l[8]), float(l[9])) for l in data[1:]])
 
-        return EvalData(
-            name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn
-        )
+        return EvalData(name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn)
 
     def get_metrics_fn(self):
         def metric_fn(logits, labels):
@@ -125,11 +112,11 @@ class STSBTask(Task):
         """Calcuate metrics based on prediction results"""
 
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(output_dir, "submit-{}-{}.tsv".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.tsv")
             with open(output, "w", encoding="utf-8") as fs:
                 fs.write("index\tpredictions\n")
                 for i, p in enumerate(np.squeeze(logits)):
-                    fs.write("{}\t{}\n".format(i, p))
+                    fs.write(f"{i}\t{p}\n")
 
         return predict_fn
 
@@ -144,15 +131,11 @@ class RTETask(Task):
         super().__init__(tokenizer, args, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         input_src = os.path.join(self.data_dir, "train.tsv")
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
-        examples = [
-            ExampleInstance((l[1], l[2]), self.label2id(l[3])) for l in data[1:]
-        ]  # if l[3] in ['slate']])
+        examples = [ExampleInstance((l[1], l[2]), self.label2id(l[3])) for l in data[1:]]  # if l[3] in ['slate']])
 
         examples = ExampleSet(examples)
         if dataset_size is None:
@@ -212,14 +195,10 @@ class RTETask(Task):
         if type_name == "test":
             examples = ExampleSet([ExampleInstance((l[1], l[2])) for l in data[1:]])
         else:
-            examples = ExampleSet(
-                [ExampleInstance((l[1], l[2]), self.label2id(l[3])) for l in data[1:]]
-            )
+            examples = ExampleSet([ExampleInstance((l[1], l[2]), self.label2id(l[3])) for l in data[1:]])
 
         predict_fn = self.get_predict_fn(examples)
-        return EvalData(
-            name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn
-        )
+        return EvalData(name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn)
 
     def get_metrics_fn(self):
         """Calcuate metrics based on prediction results"""
@@ -233,23 +212,19 @@ class RTETask(Task):
         """Calcuate metrics based on prediction results"""
 
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(
-                output_dir, "pred-probs-{}-{}.tsv".format(name, prefix)
-            )
+            output = os.path.join(output_dir, f"pred-probs-{name}-{prefix}.tsv")
             probs = softmax(logits, axis=-1)
             with open(output, "w", encoding="utf-8") as fs:
                 fs.write("sentence1\tsentence2\tnot_entailment\tentailment\n")
                 for d, probs in zip(data, probs):
-                    fs.write(
-                        f"{d.segments[0]}\t{d.segments[1]}\t{probs[0]}\t{probs[1]}\n"
-                    )
-            output = os.path.join(output_dir, "submit-{}-{}.tsv".format(name, prefix))
+                    fs.write(f"{d.segments[0]}\t{d.segments[1]}\t{probs[0]}\t{probs[1]}\n")
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.tsv")
             preds = np.argmax(logits, axis=1)
             labels = self.get_labels()
             with open(output, "w", encoding="utf-8") as fs:
                 fs.write("index\tpredictions\n")
                 for i, p in enumerate(preds):
-                    fs.write("{}\t{}\n".format(i, labels[p]))
+                    fs.write(f"{i}\t{labels[p]}\n")
 
         return predict_fn
 
@@ -264,9 +239,7 @@ class MRPCTask(Task):
         super().__init__(tokenizer, args, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         input_src = os.path.join(self.data_dir, "train.tsv")
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
@@ -324,21 +297,15 @@ class MRPCTask(Task):
         if type_name == "test":
             examples = ExampleSet([ExampleInstance((l[3], l[4])) for l in data[1:]])
         else:
-            examples = ExampleSet(
-                [ExampleInstance((l[3], l[4]), self.label2id(l[0])) for l in data[1:]]
-            )
+            examples = ExampleSet([ExampleInstance((l[3], l[4]), self.label2id(l[0])) for l in data[1:]])
 
-        return EvalData(
-            name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn
-        )
+        return EvalData(name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn)
 
     def get_metrics_fn(self):
         """Calcuate metrics based on prediction results"""
 
         def metrics_fn(logits, labels):
-            return OrderedDict(
-                accuracy=metric_accuracy(logits, labels), f1=metric_f1(logits, labels)
-            )
+            return OrderedDict(accuracy=metric_accuracy(logits, labels), f1=metric_f1(logits, labels))
 
         return metrics_fn
 
@@ -346,13 +313,13 @@ class MRPCTask(Task):
         """Calcuate metrics based on prediction results"""
 
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(output_dir, "submit-{}-{}.tsv".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.tsv")
             preds = np.argmax(logits, axis=1)
             labels = self.get_labels()
             with open(output, "w", encoding="utf-8") as fs:
                 fs.write("index\tpredictions\n")
                 for i, p in enumerate(preds):
-                    fs.write("{}\t{}\n".format(i, labels[p]))
+                    fs.write(f"{i}\t{labels[p]}\n")
 
         return predict_fn
 
@@ -367,9 +334,7 @@ class QNLITask(Task):
         super().__init__(tokenizer, args, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         input_src = os.path.join(self.data_dir, "train.tsv")
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
@@ -425,13 +390,9 @@ class QNLITask(Task):
         if type_name == "test":
             examples = ExampleSet([ExampleInstance((l[2], l[1])) for l in data[1:]])
         else:
-            examples = ExampleSet(
-                [ExampleInstance((l[2], l[1]), self.label2id(l[3])) for l in data[1:]]
-            )
+            examples = ExampleSet([ExampleInstance((l[2], l[1]), self.label2id(l[3])) for l in data[1:]])
 
-        return EvalData(
-            name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn
-        )
+        return EvalData(name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn)
 
     def get_metrics_fn(self):
         """Calcuate metrics based on prediction results"""
@@ -445,13 +406,13 @@ class QNLITask(Task):
         """Calcuate metrics based on prediction results"""
 
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(output_dir, "submit-{}-{}.tsv".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.tsv")
             preds = np.argmax(logits, axis=1)
             labels = self.get_labels()
             with open(output, "w", encoding="utf-8") as fs:
                 fs.write("index\tpredictions\n")
                 for i, p in enumerate(preds):
-                    fs.write("{}\t{}\n".format(i, labels[p]))
+                    fs.write(f"{i}\t{labels[p]}\n")
 
         return predict_fn
 
@@ -483,20 +444,13 @@ class ColaTask(Task):
                 else:
                     return [0, 1]
 
-            train_examples = [
-                ExampleInstance((l[3],), label=get_hard_label(l), domain_label=1)
-                for l in data
-            ]
+            train_examples = [ExampleInstance((l[3],), label=get_hard_label(l), domain_label=1) for l in data]
 
         self.train_split = train_examples[:-1000]
         self.train_dev = train_examples[-1000:]
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
-        examples = ExampleSet(
-            self.train_dev + self.train_split
-        )  # if l[3] in ['slate']])
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
+        examples = ExampleSet(self.train_dev + self.train_split)  # if l[3] in ['slate']])
         if dataset_size is None:
             dataset_size = len(examples) * epochs
         return DynamicDataset(
@@ -524,9 +478,7 @@ class ColaTask(Task):
                 _size = dataset_size
             d.data = DynamicDataset(
                 d.data,
-                feature_fn=self.get_feature_fn(
-                    max_seq_len=max_seq_len, label_type="int"
-                ),
+                feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, label_type="int"),
                 dataset_size=_size,
                 **kwargs,
             )
@@ -551,9 +503,7 @@ class ColaTask(Task):
                 _size = dataset_size
             d.data = DynamicDataset(
                 d.data,
-                feature_fn=self.get_feature_fn(
-                    max_seq_len=max_seq_len, label_type="int"
-                ),
+                feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, label_type="int"),
                 dataset_size=_size,
                 **kwargs,
             )
@@ -567,9 +517,7 @@ class ColaTask(Task):
             if type_name == "test":
                 examples = ExampleSet([ExampleInstance((l[1],)) for l in data[1:]])
             else:
-                examples = ExampleSet(
-                    [ExampleInstance((l[3],), self.label2id(l[1])) for l in data]
-                )
+                examples = ExampleSet([ExampleInstance((l[3],), self.label2id(l[1])) for l in data])
         elif isinstance(path, ExampleSet):
             examples = path
         else:
@@ -587,9 +535,7 @@ class ColaTask(Task):
 
     def get_metrics_fn(self):
         def metric_fn(logits, labels):
-            return OrderedDict(
-                accuracy=metric_accuracy(logits, labels), mcc=metric_mcc(logits, labels)
-            )
+            return OrderedDict(accuracy=metric_accuracy(logits, labels), mcc=metric_mcc(logits, labels))
 
         return metric_fn
 
@@ -597,16 +543,14 @@ class ColaTask(Task):
         """Calcuate metrics based on prediction results"""
 
         def predict_fn(logits, output_dir, name, prefix):
-            output = os.path.join(
-                output_dir, "pred-probs-{}-{}.tsv".format(name, prefix)
-            )
+            output = os.path.join(output_dir, f"pred-probs-{name}-{prefix}.tsv")
             probs = softmax(logits, axis=-1)
             with open(output, "w", encoding="utf-8") as fs:
                 fs.write("sentence\tlable_0\tlabel_1\n")
                 for d, probs in zip(data, probs):
                     fs.write(f"{d.segments[0]}\t{probs[0]}\t{probs[1]}\n")
 
-            output = os.path.join(output_dir, "submit-{}-{}.tsv".format(name, prefix))
+            output = os.path.join(output_dir, f"submit-{name}-{prefix}.tsv")
             preds = np.argmax(logits, axis=-1)
             labels = self.get_labels()
             with open(output, "w", encoding="utf-8") as fs:
@@ -619,7 +563,7 @@ class ColaTask(Task):
                 else:
                     fs.write("index\tpredictions\n")
                 for i, p in enumerate(preds):
-                    fs.write("{}{}{}\n".format(i + offset, sep, labels[p]))
+                    fs.write(f"{i + offset}{sep}{labels[p]}\n")
 
         return predict_fn
 
@@ -634,9 +578,7 @@ class SST2Task(Task):
         super().__init__(tokenizer, args, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         input_src = os.path.join(self.data_dir, "train.tsv")
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
@@ -692,17 +634,11 @@ class SST2Task(Task):
         if type_name == "test":
             examples = ExampleSet([ExampleInstance((l[1],)) for l in data[1:]])
         elif type_name == "orig-test":
-            examples = ExampleSet(
-                [ExampleInstance((l[1],), self.label2id(l[3])) for l in data[1:]]
-            )
+            examples = ExampleSet([ExampleInstance((l[1],), self.label2id(l[3])) for l in data[1:]])
         else:
-            examples = ExampleSet(
-                [ExampleInstance((l[0],), self.label2id(l[1])) for l in data[1:]]
-            )
+            examples = ExampleSet([ExampleInstance((l[0],), self.label2id(l[1])) for l in data[1:]])
 
-        return EvalData(
-            name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn
-        )
+        return EvalData(name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn)
 
     def get_metrics_fn(self):
         """Calcuate metrics based on prediction results"""
@@ -723,18 +659,12 @@ class QQPTask(Task):
         super().__init__(tokenizer, args, **kwargs)
         self.data_dir = data_dir
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         input_src = os.path.join(self.data_dir, "train.tsv")
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
         examples = ExampleSet(
-            [
-                ExampleInstance((l[3], l[4]), self.label2id(l[5]))
-                for l in data[1:]
-                if len(l) == 6
-            ]
+            [ExampleInstance((l[3], l[4]), self.label2id(l[5])) for l in data[1:] if len(l) == 6]
         )  # if l[3] in ['slate']])
         if dataset_size is None:
             dataset_size = len(examples) * epochs
@@ -785,25 +715,15 @@ class QQPTask(Task):
         if type_name == "test":
             examples = ExampleSet([ExampleInstance((l[-2], l[-1])) for l in data[1:]])
         else:
-            examples = ExampleSet(
-                [
-                    ExampleInstance((l[3], l[4]), self.label2id(l[5]))
-                    for l in data[1:]
-                    if len(l) == 6
-                ]
-            )
+            examples = ExampleSet([ExampleInstance((l[3], l[4]), self.label2id(l[5])) for l in data[1:] if len(l) == 6])
 
-        return EvalData(
-            name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn
-        )
+        return EvalData(name, examples, metrics_fn=self.get_metrics_fn(), predict_fn=predict_fn)
 
     def get_metrics_fn(self):
         """Calcuate metrics based on prediction results"""
 
         def metrics_fn(logits, labels):
-            return OrderedDict(
-                accuracy=metric_accuracy(logits, labels), f1=metric_f1(logits, labels)
-            )
+            return OrderedDict(accuracy=metric_accuracy(logits, labels), f1=metric_f1(logits, labels))
 
         return metrics_fn
 
@@ -832,15 +752,11 @@ class MNLITask(Task):
 
         return _example_to_feature
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         input_src = os.path.join(self.data_dir, "train.tsv")
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
-        examples = [
-            ExampleInstance((l[8], l[9]), self.label2id(l[-1])) for l in data[1:]
-        ]  # if l[3] in ['slate']])
+        examples = [ExampleInstance((l[8], l[9]), self.label2id(l[-1])) for l in data[1:]]  # if l[3] in ['slate']])
         examples = ExampleSet(examples)
         if dataset_size is None:
             dataset_size = len(examples) * epochs
@@ -892,14 +808,10 @@ class MNLITask(Task):
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
         predict_fn = self.get_predict_fn()
-        examples = ExampleSet(
-            [ExampleInstance((l[5], l[6]), self.label2id(l[7])) for l in data[1:]]
-        )
+        examples = ExampleSet([ExampleInstance((l[5], l[6]), self.label2id(l[7])) for l in data[1:]])
 
         def _metric_fn(logits, labels):
-            return OrderedDict(
-                accuracy=metric_accuracy(logits, labels), mcc=metric_mcc(logits, labels)
-            )
+            return OrderedDict(accuracy=metric_accuracy(logits, labels), mcc=metric_mcc(logits, labels))
 
         return EvalData(
             name,
@@ -915,9 +827,7 @@ class MNLITask(Task):
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
         predict_fn = self.get_predict_fn()
-        examples = ExampleSet(
-            [ExampleInstance((l[1], l[2]), self.label2id(l[3])) for l in data[1:]]
-        )
+        examples = ExampleSet([ExampleInstance((l[1], l[2]), self.label2id(l[3])) for l in data[1:]])
 
         def _metric_fn(logits, labels):
             return OrderedDict(accuracy=metric_accuracy(logits, labels))
@@ -939,9 +849,7 @@ class MNLITask(Task):
         if type_name == "test":
             examples = ExampleSet([ExampleInstance((l[8], l[9])) for l in data[1:]])
         else:
-            examples = ExampleSet(
-                [ExampleInstance((l[8], l[9]), self.label2id(l[-1])) for l in data[1:]]
-            )
+            examples = ExampleSet([ExampleInstance((l[8], l[9]), self.label2id(l[-1])) for l in data[1:]])
 
         return EvalData(
             name,
@@ -982,17 +890,13 @@ class ANLITask(MNLITask):
         data_dir = data_dir.replace("/ANLI", "/MNLI")
         super().__init__(data_dir, tokenizer, args, **kwargs)
 
-    def train_data(
-        self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs
-    ):
+    def train_data(self, max_seq_len=512, dataset_size=None, epochs=1, mask_gen=None, **kwargs):
         examples = []
         data_src = ["R1", "R2", "R3"]
         for d in data_src:
             input_src = os.path.join(self.data_dir, f"anli_v0.1/{d}/train.tsv")
             data = self._read_tsv(input_src)
-            examples += [
-                ExampleInstance((l[1], l[2]), self.label2id(l[3])) for l in data[1:]
-            ]
+            examples += [ExampleInstance((l[1], l[2]), self.label2id(l[3])) for l in data[1:]]
 
         examples = ExampleSet(examples)
         if dataset_size is None:

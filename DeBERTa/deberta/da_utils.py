@@ -1,8 +1,9 @@
-import torch
+import math
 import pdb
 from functools import lru_cache
+
 import numpy as np
-import math
+import torch
 
 __all__ = ["build_relative_position", "make_log_bucket_position"]
 
@@ -17,23 +18,14 @@ def make_log_bucket_dict(bucket_size, max_position, device=None):
         torch.tensor(mid - 1).to(relative_pos),
         torch.abs(relative_pos),
     )
-    log_pos = (
-        torch.ceil(
-            torch.log(abs_pos / mid) / math.log((max_position - 1) / mid) * (mid - 1)
-        )
-        + mid
-    )
-    bucket_pos = torch.where(
-        abs_pos <= mid, relative_pos, (log_pos * sign).to(relative_pos)
-    ).to(torch.long)
+    log_pos = torch.ceil(torch.log(abs_pos / mid) / math.log((max_position - 1) / mid) * (mid - 1)) + mid
+    bucket_pos = torch.where(abs_pos <= mid, relative_pos, (log_pos * sign).to(relative_pos)).to(torch.long)
     return bucket_pos
 
 
 # Faster version
 def make_log_bucket_position(relative_pos, bucket_size, max_position):
-    relative_pos = (
-        torch.clamp(relative_pos, -max_position + 1, max_position - 1) + max_position
-    )
+    relative_pos = torch.clamp(relative_pos, -max_position + 1, max_position - 1) + max_position
     bucket_dict = make_log_bucket_dict(bucket_size, max_position, relative_pos.device)
     for d in range(relative_pos.dim() - 1):
         bucket_dict = bucket_dict.unsqueeze(0)
@@ -46,9 +38,7 @@ def make_log_bucket_position(relative_pos, bucket_size, max_position):
 
 
 @lru_cache(maxsize=128)
-def build_relative_position(
-    query_size, key_size, bucket_size=-1, max_position=-1, device=None
-):
+def build_relative_position(query_size, key_size, bucket_size=-1, max_position=-1, device=None):
     q_ids = torch.arange(0, query_size)
     k_ids = torch.arange(0, key_size)
     if device is not None:
@@ -64,9 +54,7 @@ def build_relative_position(
     return rel_pos_ids
 
 
-def build_relative_position_from_abs(
-    query_pos, key_pos, bucket_size=-1, max_position=-1, device=None
-):
+def build_relative_position_from_abs(query_pos, key_pos, bucket_size=-1, max_position=-1, device=None):
     if isinstance(query_pos, tuple):
         q_ids = torch.tensor(query_pos)
     else:

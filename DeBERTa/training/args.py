@@ -12,12 +12,8 @@ __all__ = ["get_args"]
 
 
 def get_args():
-    parser = argparse.ArgumentParser(
-        add_help=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    group = parser.add_argument_group(
-        title="Trainer", description="Parameters for the distributed trainer"
-    )
+    parser = argparse.ArgumentParser(add_help=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    group = parser.add_argument_group(title="Trainer", description="Parameters for the distributed trainer")
     group.add_argument(
         "--accumulative_update",
         type=int,
@@ -39,9 +35,7 @@ def get_args():
         help="local_rank for distributed training on gpus",
     )
 
-    group.add_argument(
-        "--workers", type=int, default=2, help="The workers to load data."
-    )
+    group.add_argument("--workers", type=int, default=2, help="The workers to load data.")
 
     group.add_argument(
         "--num_train_epochs",
@@ -50,9 +44,7 @@ def get_args():
         help="Total number of training epochs to perform.",
     )
 
-    group.add_argument(
-        "--seed", type=int, default=1234, help="random seed for initialization"
-    )
+    group.add_argument("--seed", type=int, default=1234, help="random seed for initialization")
 
     group.add_argument(
         "--train_batch_size",

@@ -7,20 +7,22 @@
 #
 
 import os
-import torch
 import random
 import time
+from collections import OrderedDict, defaultdict
+
 import numpy as np
-from collections import defaultdict, OrderedDict
+import torch
 from torch.utils.data import DataLoader
-from ..data import BatchSampler, DistributedBatchSampler, RandomSampler, AsyncDataLoader
+
+from ..data import AsyncDataLoader, BatchSampler, DistributedBatchSampler, RandomSampler
 from ..utils import get_logger
 
 logger = get_logger()
 
+from ._utils import batch_to
 from .dist_launcher import get_ngpu
 from .optimizer_utils import create_xoptimizer
-from ._utils import batch_to
 
 __all__ = ["DistributedTrainer", "set_random_seed"]
 
@@ -71,9 +73,7 @@ class TrainerState:
             "{}[{:0.1f}%][{:0.2f}h] Steps={}, loss={}, examples={}, loss_scale={:0.1f}, {:0.1f}s".format(
                 tag,
                 100 * self.steps / self.num_training_steps,
-                (self.num_training_steps - self.steps)
-                * (start - end)
-                / ((self.steps - self._last_report_step) * 3600),
+                (self.num_training_steps - self.steps) * (start - end) / ((self.steps - self._last_report_step) * 3600),
                 self.steps,
                 self.loss / self.steps,
                 self.examples,
@@ -102,8 +102,7 @@ class DistributedTrainer:
         name=None,
         **kwargs,
     ):
-        """
-        data_fn return tuples (training_dataset, training_steps, train_sampler, batch_scheduler), training_dataset is required
+        """data_fn return tuples (training_dataset, training_steps, train_sampler, batch_scheduler), training_dataset is required
         loss_fn return the loss of current mini-batch and the size of the batch
         optimizer_fn return the created optimizer
         eval_fn return metrics for model selection
@@ -118,11 +117,7 @@ class DistributedTrainer:
 
         train_data, training_steps, train_sampler = data_fn(self)
         self.train_data = train_data
-        self.train_sampler = (
-            train_sampler
-            if train_sampler is not None
-            else RandomSampler(len(train_data))
-        )
+        self.train_sampler = train_sampler if train_sampler is not None else RandomSampler(len(train_data))
         self.training_epochs = int(getattr(args, "num_train_epochs", 1))
 
         if training_steps is None:
@@ -175,9 +170,7 @@ class DistributedTrainer:
         world_size = self.args.world_size
         for n_epoch in range(self.trainer_state.epochs, self.training_epochs):
             batch_sampler = BatchSampler(self.train_sampler, self.args.train_batch_size)
-            batch_sampler = DistributedBatchSampler(
-                batch_sampler, rank=rank, world_size=world_size
-            )
+            batch_sampler = DistributedBatchSampler(batch_sampler, rank=rank, world_size=world_size)
             batch_sampler.next = self.trainer_state.next_batch
             num_workers = getattr(self.args, "workers", 2)
             train_dataloader = DataLoader(
@@ -203,9 +196,7 @@ class DistributedTrainer:
     def save_model(self, args, checkpoint_dir, chk_postfix, model, optimizer):
         save_path = os.path.join(checkpoint_dir, f"pytorch.model-{chk_postfix}.bin")
         if hasattr(model, "module"):
-            model_state = OrderedDict(
-                [(n, p) for n, p in model.module.state_dict().items()]
-            )
+            model_state = OrderedDict([(n, p) for n, p in model.module.state_dict().items()])
         else:
             model_state = OrderedDict([(n, p) for n, p in model.state_dict().items()])
         if args.rank < 1:
@@ -215,13 +206,9 @@ class DistributedTrainer:
     def _eval_model(self, with_checkpoint=True):
         if with_checkpoint:
             checkpoint_dir = getattr(self.args, "checkpoint_dir", None)
-            checkpoint_dir = (
-                checkpoint_dir if checkpoint_dir is not None else self.output_dir
-            )
+            checkpoint_dir = checkpoint_dir if checkpoint_dir is not None else self.output_dir
             chk_postfix = f"{self.trainer_state.steps:06}"
-            self.save_model(
-                self.args, checkpoint_dir, chk_postfix, self.model, self.optimizer
-            )
+            self.save_model(self.args, checkpoint_dir, chk_postfix, self.model, self.optimizer)
         _metric = self.trainer_state.best_metric
         _steps = self.trainer_state.best_steps
         if self.eval_fn is not None:

@@ -1,31 +1,31 @@
 import torch
-import torch.multiprocessing as multiprocessing
-from torch._C import (
-    _set_worker_signal_handlers,
-    _remove_worker_pids,
-    _error_if_any_worker_fails,
-)
-
 from packaging import version
+from torch import multiprocessing
+from torch._C import (
+    _error_if_any_worker_fails,
+    _remove_worker_pids,
+    _set_worker_signal_handlers,
+)
 
 if version.Version(torch.__version__) >= version.Version("1.0.0"):
     from torch._C import _set_worker_pids
 else:
     from torch._C import _update_worker_pids as _set_worker_pids
 
-from torch.utils.data import SequentialSampler, RandomSampler, BatchSampler
-import signal
 import collections.abc
+import os
 import re
+import signal
 import sys
 import threading
 import traceback
-import os
+
+from torch.utils.data import BatchSampler, RandomSampler, SequentialSampler
 
 IS_WINDOWS = sys.platform == "win32"
 if IS_WINDOWS:
     import ctypes
-    from ctypes.wintypes import DWORD, BOOL, HANDLE
+    from ctypes.wintypes import BOOL, DWORD, HANDLE
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -35,7 +35,7 @@ else:
 __all__ = ["SequentialDataLoader"]
 
 
-class ExceptionWrapper(object):
+class ExceptionWrapper:
     r"""Wraps an exception plus traceback to communicate across threads"""
 
     def __init__(self, exc_info):
@@ -52,7 +52,7 @@ if IS_WINDOWS:
     # On Windows, the parent ID of the worker process remains unchanged when the manager process
     # is gone, and the only way to check it through OS is to let the worker have a process handle
     # of the manager and ask if the process status has changed.
-    class ManagerWatchdog(object):
+    class ManagerWatchdog:
         def __init__(self):
             self.manager_pid = os.getppid()
 
@@ -64,9 +64,7 @@ if IS_WINDOWS:
 
             # Value obtained from https://msdn.microsoft.com/en-us/library/ms684880.aspx
             SYNCHRONIZE = 0x00100000
-            self.manager_handle = self.kernel32.OpenProcess(
-                SYNCHRONIZE, 0, self.manager_pid
-            )
+            self.manager_handle = self.kernel32.OpenProcess(SYNCHRONIZE, 0, self.manager_pid)
 
             if not self.manager_handle:
                 raise ctypes.WinError(ctypes.get_last_error())
@@ -76,7 +74,7 @@ if IS_WINDOWS:
             return self.kernel32.WaitForSingleObject(self.manager_handle, 0) != 0
 else:
 
-    class ManagerWatchdog(object):
+    class ManagerWatchdog:
         def __init__(self):
             self.manager_pid = os.getppid()
 
@@ -161,7 +159,6 @@ numpy_type_map = {
 
 def default_collate(batch):
     r"""Puts each data field into a tensor with outer dimension batch size"""
-
     error_msg = "batch must contain tensors, numbers, dicts or lists; found {}"
     elem_type = type(batch[0])
     if isinstance(batch[0], torch.Tensor):
@@ -173,11 +170,7 @@ def default_collate(batch):
             storage = batch[0].storage()._new_shared(numel)
             out = batch[0].new(storage)
         return torch.stack(batch, 0, out=out)
-    elif (
-        elem_type.__module__ == "numpy"
-        and elem_type.__name__ != "str_"
-        and elem_type.__name__ != "string_"
-    ):
+    elif elem_type.__module__ == "numpy" and elem_type.__name__ != "str_" and elem_type.__name__ != "string_":
         elem = batch[0]
         if elem_type.__name__ == "ndarray":
             # array of string classes and object
@@ -200,7 +193,7 @@ def default_collate(batch):
         transposed = zip(*batch)
         return [default_collate(samples) for samples in transposed]
 
-    raise TypeError((error_msg.format(type(batch[0]))))
+    raise TypeError(error_msg.format(type(batch[0])))
 
 
 def pin_memory_batch(batch):
@@ -246,7 +239,7 @@ def _set_SIGCHLD_handler():
     _SIGCHLD_handler_set = True
 
 
-class _SequentialDataLoaderIter(object):
+class _SequentialDataLoaderIter:
     r"""Iterates once over the DataLoader's dataset, as specified by the sampler"""
 
     def __init__(self, loader):
@@ -262,9 +255,7 @@ class _SequentialDataLoaderIter(object):
 
         if self.num_workers > 0:
             self.worker_init_fn = loader.worker_init_fn
-            self.index_queues = [
-                multiprocessing.Queue() for _ in range(self.num_workers)
-            ]
+            self.index_queues = [multiprocessing.Queue() for _ in range(self.num_workers)]
             self.worker_queue_idx = 0
             self.worker_result_queue = multiprocessing.SimpleQueue()
             self.batches_outstanding = 0
@@ -331,9 +322,7 @@ class _SequentialDataLoaderIter(object):
             try:
                 return self.data_queue.get(timeout=self.timeout)
             except queue.Empty:
-                raise RuntimeError(
-                    "DataLoader timed out after {} seconds".format(self.timeout)
-                )
+                raise RuntimeError(f"DataLoader timed out after {self.timeout} seconds")
         else:
             return self.data_queue.get()
 
@@ -428,13 +417,14 @@ class _SequentialDataLoaderIter(object):
             self._shutdown_workers()
 
 
-class SequentialDataLoader(object):
-    r"""
-    Sequential Data loader. Combines a dataset and a sampler, and provides
+class SequentialDataLoader:
+    r"""Sequential Data loader. Combines a dataset and a sampler, and provides
     single- or multi-process iterators over the dataset.
     This is modified from Pytorch.DataLoader by disable random state touch as for sequential data loading,
     we don't want it to touch any random state.
+
     Arguments:
+    ---------
         dataset (Dataset): dataset from which to load the data.
         batch_size (int, optional): how many samples per batch to load
             (default: 1).
@@ -506,9 +496,7 @@ class SequentialDataLoader(object):
         if batch_sampler is not None:
             if batch_size > 1 or shuffle or sampler is not None or drop_last:
                 raise ValueError(
-                    "batch_sampler option is mutually exclusive "
-                    "with batch_size, shuffle, sampler, and "
-                    "drop_last"
+                    "batch_sampler option is mutually exclusive " "with batch_size, shuffle, sampler, and " "drop_last"
                 )
             self.batch_size = None
             self.drop_last = None
@@ -517,10 +505,7 @@ class SequentialDataLoader(object):
             raise ValueError("sampler option is mutually exclusive with " "shuffle")
 
         if self.num_workers < 0:
-            raise ValueError(
-                "num_workers option cannot be negative; "
-                "use num_workers=0 to disable multiprocessing."
-            )
+            raise ValueError("num_workers option cannot be negative; " "use num_workers=0 to disable multiprocessing.")
 
         if batch_sampler is None:
             if sampler is None:
@@ -536,11 +521,7 @@ class SequentialDataLoader(object):
 
     def __setattr__(self, attr, val):
         if self.__initialized and attr in ("batch_size", "sampler", "drop_last"):
-            raise ValueError(
-                "{} attribute should not be set after {} is " "initialized".format(
-                    attr, self.__class__.__name__
-                )
-            )
+            raise ValueError(f"{attr} attribute should not be set after {self.__class__.__name__} is " "initialized")
 
         super(SequentialDataLoader, self).__setattr__(attr, val)
 

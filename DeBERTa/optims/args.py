@@ -6,21 +6,18 @@
 # Date: 05/15/2019
 #
 
-""" Arguments for optimizer
+"""Arguments for optimizer
 """
 import argparse
+
 from ..utils import boolean_string
 
 __all__ = ["get_args"]
 
 
 def get_args():
-    parser = argparse.ArgumentParser(
-        add_help=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    group = parser.add_argument_group(
-        title="Optimizer", description="Parameters for the distributed optimizer"
-    )
+    parser = argparse.ArgumentParser(add_help=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    group = parser.add_argument_group(title="Optimizer", description="Parameters for the distributed optimizer")
     group.add_argument(
         "--fp16",
         default=False,
@@ -42,17 +39,11 @@ def get_args():
         help="The steps to wait to increase the loss scale.",
     )
 
-    group.add_argument(
-        "--lookahead_k", default=-1, type=int, help="lookahead k parameter"
-    )
+    group.add_argument("--lookahead_k", default=-1, type=int, help="lookahead k parameter")
 
-    group.add_argument(
-        "--lookahead_alpha", default=0.5, type=float, help="lookahead alpha parameter"
-    )
+    group.add_argument("--lookahead_alpha", default=0.5, type=float, help="lookahead alpha parameter")
 
-    group.add_argument(
-        "--with_radam", default=False, type=boolean_string, help="whether to use RAdam"
-    )
+    group.add_argument("--with_radam", default=False, type=boolean_string, help="whether to use RAdam")
 
     group.add_argument(
         "--opt_type",
@@ -66,8 +57,7 @@ def get_args():
         "--warmup_proportion",
         default=0.1,
         type=float,
-        help="Proportion of training to perform linear learning rate warmup for. "
-        "E.g., 0.1 = 10%% of training.",
+        help="Proportion of training to perform linear learning rate warmup for. " "E.g., 0.1 = 10%% of training.",
     )
 
     group.add_argument(
@@ -99,20 +89,12 @@ def get_args():
         help="The initial learning rate for Adam.",
     )
 
-    group.add_argument(
-        "--epsilon", default=1e-6, type=float, help="epsilon setting for Adam."
-    )
+    group.add_argument("--epsilon", default=1e-6, type=float, help="epsilon setting for Adam.")
 
-    group.add_argument(
-        "--adam_beta1", default=0.9, type=float, help="The beta1 parameter for Adam."
-    )
+    group.add_argument("--adam_beta1", default=0.9, type=float, help="The beta1 parameter for Adam.")
 
-    group.add_argument(
-        "--adam_beta2", default=0.999, type=float, help="The beta2 parameter for Adam."
-    )
+    group.add_argument("--adam_beta2", default=0.999, type=float, help="The beta2 parameter for Adam.")
 
-    group.add_argument(
-        "--weight_decay", type=float, default=0.01, help="The weight decay rate"
-    )
+    group.add_argument("--weight_decay", type=float, default=0.01, help="The weight decay rate")
 
     return parser

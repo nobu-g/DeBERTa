@@ -49,12 +49,7 @@ class DistributedBatchSampler(Sampler):
                 if self.drop_last:
                     break
                 else:
-                    b.extend(
-                        [
-                            b[0]
-                            for _ in range(self.world_size - len(b) % self.world_size)
-                        ]
-                    )
+                    b.extend([b[0] for _ in range(self.world_size - len(b) % self.world_size)])
             chunk_size = len(b) // self.world_size
             yield b[self.rank * chunk_size : (self.rank + 1) * chunk_size]
 

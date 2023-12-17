@@ -7,9 +7,6 @@
 # Date: 01/25/2019
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import torch
 from torch.nn import CrossEntropyLoss
@@ -88,9 +85,7 @@ class SequenceClassificationModel(NNModule):
             else:
                 log_softmax = torch.nn.LogSoftmax(-1)
                 label_confidence = 1
-                loss = -(
-                    (log_softmax(logits) * labels).sum(-1) * label_confidence
-                ).mean()
+                loss = -((log_softmax(logits) * labels).sum(-1) * label_confidence).mean()
 
         return {"logits": logits, "loss": loss}
 

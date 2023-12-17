@@ -1,10 +1,10 @@
-import json
 import copy
+import json
 
 __all__ = ["AbsModelConfig", "ModelConfig"]
 
 
-class AbsModelConfig(object):
+class AbsModelConfig:
     def __init__(self):
         pass
 
@@ -21,7 +21,7 @@ class AbsModelConfig(object):
     @classmethod
     def from_json_file(cls, json_file):
         """Constructs a `ModelConfig` from a json file of parameters."""
-        with open(json_file, "r", encoding="utf-8") as reader:
+        with open(json_file, encoding="utf-8") as reader:
             text = reader.read()
         return cls.from_dict(json.loads(text))
 
@@ -40,16 +40,14 @@ class AbsModelConfig(object):
             if isinstance(obj, AbsModelConfig):
                 return obj.__dict__
 
-        return (
-            json.dumps(self.__dict__, indent=2, sort_keys=True, default=_json_default)
-            + "\n"
-        )
+        return json.dumps(self.__dict__, indent=2, sort_keys=True, default=_json_default) + "\n"
 
 
 class ModelConfig(AbsModelConfig):
     """Configuration class to store the configuration of a :class:`~DeBERTa.deberta.DeBERTa` model.
 
-    Attributes:
+    Attributes
+    ----------
         hidden_size (int): Size of the encoder layers and the pooler layer, default: `768`.
         num_hidden_layers (int): Number of hidden layers in the Transformer encoder, default: `12`.
         num_attention_heads (int): Number of attention heads for each attention layer in
@@ -80,7 +78,6 @@ class ModelConfig(AbsModelConfig):
 
     def __init__(self):
         """Constructs ModelConfig."""
-
         self.hidden_size = 768
         self.num_hidden_layers = 12
         self.num_attention_heads = 12

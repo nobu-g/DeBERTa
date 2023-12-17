@@ -41,9 +41,7 @@ class PerturbationLayer(torch.nn.Module):
             return True
         if self.delta is None:
             delta = torch.clamp(
-                self.input.new(self.input.size())
-                .normal_(0, self.init_perturbation)
-                .float(),
+                self.input.new(self.input.size()).normal_(0, self.init_perturbation).float(),
                 -2 * self.init_perturbation,
                 2 * self.init_perturbation,
             )
@@ -56,13 +54,9 @@ class PerturbationLayer(torch.nn.Module):
                 return False
             eps = self.learning_rate
             with torch.no_grad():
-                delta = delta + eps * grad / (
-                    1e-6 + grad.abs().max(-1, keepdim=True)[0]
-                )
+                delta = delta + eps * grad / (1e-6 + grad.abs().max(-1, keepdim=True)[0])
         self.delta = delta.float().detach().requires_grad_(requires_grad)
-        self.perturbated_input = (self.input.to(delta).detach() + self.delta).to(
-            self.input
-        )
+        self.perturbated_input = (self.input.to(delta).detach() + self.delta).to(self.input)
         return True
 
 
@@ -73,8 +67,7 @@ def hook_sift_layer(
     init_perturbation=1e-2,
     target_module="embeddings.LayerNorm",
 ):
-    """
-    Hook the sift perturbation layer to and existing model. With this method, you can apply adversarial training
+    """Hook the sift perturbation layer to and existing model. With this method, you can apply adversarial training
     without changing the existing model implementation.
 
     Params:
@@ -89,7 +82,6 @@ def hook_sift_layer(
       The perturbation layers.
 
     """
-
     if isinstance(target_module, str):
         _modules = [k for n, k in model.named_modules() if target_module in n]
     else:
@@ -140,17 +132,14 @@ class AdversarialLearner:
 
     def __init__(self, model, adv_modules=None):
         if adv_modules is None:
-            self.adv_modules = [
-                m for m in model.modules() if isinstance(m, PerturbationLayer)
-            ]
+            self.adv_modules = [m for m in model.modules() if isinstance(m, PerturbationLayer)]
         else:
             self.adv_modules = adv_modules
         self.parameters = [p for p in model.parameters()]
         self.model = model
 
     def loss(self, target, logits_fn, loss_fn="symmetric-kl", *wargs, **kwargs):
-        """
-        Calculate the adversarial loss based on the given logits fucntion and loss function.
+        """Calculate the adversarial loss based on the given logits fucntion and loss function.
         Inputs:
         `target`: the logits from original inputs.
         `logits_fn`: the function that produces logits based on perturbated inputs. E.g.,
