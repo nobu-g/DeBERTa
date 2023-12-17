@@ -12,6 +12,7 @@ from .cache_utils import *
 from .config import *
 from .deberta import *
 from .disentangled_attention import *
+from .nnmodule import *
 from .ops import *
 from .pooling import *
 from .tokenizers import *

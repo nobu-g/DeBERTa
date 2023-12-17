@@ -9,10 +9,8 @@
 
 """DeBERTa finetuning runner."""
 
-import os
-
-os.environ["OMP_NUM_THREADS"] = "1"
 import argparse
+import os
 import random
 import shutil
 from collections import OrderedDict
@@ -42,6 +40,8 @@ from ..utils import *
 from ..utils import xtqdm as tqdm
 from ._utils import merge_distributed
 from .tasks import get_task, load_tasks
+
+os.environ["OMP_NUM_THREADS"] = "1"
 
 
 def create_model(args, num_labels, model_class_fn):
