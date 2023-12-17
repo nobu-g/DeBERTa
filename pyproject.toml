@@ -64,9 +64,11 @@ ignore = [
     "ANN102",  # Missing type annotation for `cls` in classmethod
     "F403",
     "F405",
+    "F841",
     "E741",
+    "E722",
 ]
-select = ["F", "E", "W", "I", "B", "PL", "PD", "NPY", "RUF", "UP", "COM", "PT", "PYI"]
+select = ["F", "E", "W", "I", "B", "PL", "PD", "RUF", "UP", "COM", "PT", "PYI"]
 
 
 [build-system]

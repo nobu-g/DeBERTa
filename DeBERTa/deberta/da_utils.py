@@ -27,7 +27,7 @@ def make_log_bucket_dict(bucket_size, max_position, device=None):
 def make_log_bucket_position(relative_pos, bucket_size, max_position):
     relative_pos = torch.clamp(relative_pos, -max_position + 1, max_position - 1) + max_position
     bucket_dict = make_log_bucket_dict(bucket_size, max_position, relative_pos.device)
-    for d in range(relative_pos.dim() - 1):
+    for _d in range(relative_pos.dim() - 1):
         bucket_dict = bucket_dict.unsqueeze(0)
         bucket_pos = torch.gather(
             bucket_dict.expand(list(relative_pos.size())[:-1] + [bucket_dict.size(-1)]),
@@ -77,5 +77,5 @@ def build_relative_position_from_abs(query_pos, key_pos, bucket_size=-1, max_pos
 
 def test_log_bucket():
     x = np.arange(-511, 511)
-    y = make_log_bucket_position(x, 128, 512)
+    _ = make_log_bucket_position(x, 128, 512)
     pdb.set_trace()

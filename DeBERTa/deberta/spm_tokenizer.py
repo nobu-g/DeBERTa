@@ -95,7 +95,7 @@ class SPMTokenizer:
             token2words = [0] * len(tokens)
             tid = 0
             for i, w in enumerate(word_tokens):
-                for k, t in enumerate(w):
+                for _k, _t in enumerate(w):
                     token2words[tid] = i
                     tid += 1
             word_start = token2words[start]
@@ -116,7 +116,11 @@ class SPMTokenizer:
             return True
         if (
             len(token) == 1
-            and (_is_whitespace(list(token)[0]) or _is_control(list(token)[0]) or _is_punctuation(list(token)[0]))
+            and (
+                _is_whitespace(next(iter(token)))
+                or _is_control(next(iter(token)))
+                or _is_punctuation(next(iter(token)))
+            )
         ) or token in self.special_tokens:
             return False
 
@@ -276,7 +280,7 @@ def _is_whitespace(char):
     """Checks whether `chars` is a whitespace character."""
     # \t, \n, and \r are technically contorl characters but we treat them
     # as whitespace since they are generally considered as such.
-    if char == " " or char == "\t" or char == "\n" or char == "\r":
+    if char in (" ", "\t", "\n", "\r"):
         return True
     cat = unicodedata.category(char)
     if cat == "Zs":
@@ -288,7 +292,7 @@ def _is_control(char):
     """Checks whether `chars` is a control character."""
     # These are technically control characters but we count them as whitespace
     # characters.
-    if char == "\t" or char == "\n" or char == "\r":
+    if char in ("\t", "\n", "\r"):
         return False
     cat = unicodedata.category(char)
     if cat.startswith("C"):

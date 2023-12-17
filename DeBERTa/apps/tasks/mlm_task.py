@@ -90,7 +90,6 @@ class NGramMaskGenerator:
                 unigrams.append([id])
 
         num_to_predict = min(self.max_preds_per_seq, max(1, int(round(len(tokens) * self.mask_lm_prob))))
-        mask_len = 0
         offset = 0
         mask_grams = np.array([False] * len(unigrams))
         while offset < len(unigrams):
@@ -369,5 +368,5 @@ def test_MLM():
     tokenizer = tokenizers[vocab_type](vocab_path)
     mask_gen = NGramMaskGenerator(tokenizer, max_gram=1)
     mlm = MLMTask("/mnt/penhe/data/wiki103/spm", tokenizer, None)
-    train_data = mlm.train_data(mask_gen=mask_gen)
+    mlm.train_data(mask_gen=mask_gen)
     pdb.set_trace()

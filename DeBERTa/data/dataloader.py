@@ -27,10 +27,7 @@ if IS_WINDOWS:
     import ctypes
     from ctypes.wintypes import BOOL, DWORD, HANDLE
 
-if sys.version_info[0] == 2:
-    import Queue as queue
-else:
-    import queue
+import queue
 
 __all__ = ["SequentialDataLoader"]
 
@@ -344,7 +341,8 @@ class _SequentialDataLoaderIter:
             raise StopIteration
 
         while True:
-            assert not self.shutdown and self.batches_outstanding > 0
+            assert not self.shutdown
+            assert self.batches_outstanding > 0
             idx, batch = self._get_batch()
             self.batches_outstanding -= 1
             if idx != self.rcvd_idx:
@@ -523,7 +521,7 @@ class SequentialDataLoader:
         if self.__initialized and attr in ("batch_size", "sampler", "drop_last"):
             raise ValueError(f"{attr} attribute should not be set after {self.__class__.__name__} is " "initialized")
 
-        super(SequentialDataLoader, self).__setattr__(attr, val)
+        super().__setattr__(attr, val)
 
     def __iter__(self):
         return _SequentialDataLoaderIter(self)

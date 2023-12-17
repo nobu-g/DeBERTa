@@ -129,7 +129,7 @@ class NERTask(Task):
             labels = self.get_labels()
             with open(output, "w", encoding="utf-8") as fs:
                 fs.write("index\tpredictions\n")
-                for i, (e, p) in enumerate(zip(examples, preds)):
+                for _i, (e, p) in enumerate(zip(examples, preds)):
                     words = "".join(e.sentence).split(" ")
                     tokens = e.segments[0]
                     bw = 0
@@ -235,7 +235,6 @@ class NERTask(Task):
     ):
         if not rng:
             rng = random
-        max_num_tokens = max_seq_len - 2
         features = OrderedDict()
         tokens = ["[CLS]"]
         target_labels = [-1]
@@ -304,5 +303,5 @@ def test_ner_load_data():
     task = NERTask(os.path.dirname(data), tokenizer)
     # docs = task.extract_docs(data)
     examples = task.load_data(data)
-    feature = task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
+    task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
     pdb.set_trace()

@@ -10,8 +10,7 @@ class dummy_tqdm:
         self.iterable = iterable
 
     def __iter__(self):
-        for d in self.iterable:
-            yield d
+        yield from self.iterable
 
     def update(self, *wargs, **kwargs):
         pass

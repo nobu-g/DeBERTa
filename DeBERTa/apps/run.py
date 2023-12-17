@@ -63,7 +63,6 @@ def create_model(args, num_labels, model_class_fn):
 
 
 def train_model(args, model, device, train_data, eval_data, run_eval_fn, train_fn=None, loss_fn=None):
-    total_examples = len(train_data)
     num_train_steps = int(len(train_data) * args.num_train_epochs / args.train_batch_size)
     logger.info("  Training batch size = %d", args.train_batch_size)
     logger.info("  Num steps = %d", num_train_steps)
@@ -103,9 +102,7 @@ def train_model(args, model, device, train_data, eval_data, run_eval_fn, train_f
             loss = output["loss"]
             if isinstance(logits, Sequence):
                 logits = logits[-1]
-            v_teacher = []
 
-            t_logits = None
             if args.vat_lambda > 0:
 
                 def pert_logits_fn(model, **data):
@@ -168,7 +165,7 @@ def calc_metrics(predicts, labels, eval_loss, eval_item, eval_results, args, nam
             logger.info(f"***** Eval results-{name}-{prefix} *****")
             for key in sorted(result.keys()):
                 logger.info("  %s = %s", key, str(result[key]))
-                writer.write("%s = %s\n" % (key, str(result[key])))
+                writer.write(f"{key} = {result[key]!s}\n")
                 tb_metrics[f"{name}/{key}"] = result[key]
 
         if predict_fn is not None:
@@ -207,7 +204,6 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
             ort_model_qt = os.path.join(args.output_dir, f"{prefix}_onnx_qt.bin")
 
     eval_results = OrderedDict()
-    eval_metric = 0
     no_tqdm = (True if os.getenv("NO_TQDM", "0") != "0" else False) or args.rank > 0
     ort_session = None
     for eval_item in eval_data:
@@ -254,7 +250,7 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
                         if isinstance(_batch[k], torch.Tensor):
                             numpy_input[k] = _batch[k].cpu().numpy()
 
-                    warmup = ort_session.run(None, numpy_input)
+                    ort_session.run(None, numpy_input)
                     # cuda_session = ort.InferenceSession(ort_model, sess_options=sess_opt, providers=['CUDAExecutionProvider'])
                     # warmup = cuda_session.run(None, numpy_input)
                 numpy_input = {}
@@ -315,8 +311,6 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
 
 def run_predict(args, model, device, eval_data, prefix=None):
     # Run prediction for full data
-    eval_results = OrderedDict()
-    eval_metric = 0
     for eval_item in eval_data:
         name = eval_item.name
         eval_sampler = SequentialSampler(len(eval_item.data))

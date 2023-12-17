@@ -168,7 +168,7 @@ class AdversarialLearner:
         pert_loss = loss_fn(pert_logits, target.detach()).sum()
         pert_loss.backward()
         for m in self.adv_modules:
-            ok = m.update_delta(True)
+            m.update_delta(True)
 
         for r, p in zip(self.prev, self.parameters):
             p.requires_grad_(r)

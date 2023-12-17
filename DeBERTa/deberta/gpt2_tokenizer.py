@@ -174,7 +174,9 @@ class GPT2Tokenizer:
         if is_bos:
             return True
         s = self._decode(token)
-        if len(s) == 1 and (_is_whitespace(list(s)[0]) or _is_control(list(s)[0]) or _is_punctuation(list(s)[0])):
+        if len(s) == 1 and (
+            _is_whitespace(next(iter(s))) or _is_control(next(iter(s))) or _is_punctuation(next(iter(s)))
+        ):
             return False
 
         return not s.startswith(" ")

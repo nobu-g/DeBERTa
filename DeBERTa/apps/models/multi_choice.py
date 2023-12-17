@@ -80,7 +80,6 @@ class MultiChoiceModel(NNModule):
         unexpected_keys,
         error_msgs,
     ):
-        new_state = dict()
         bert_prefix = prefix + "bert."
         deberta_prefix = prefix + "deberta."
         for k in list(state_dict.keys()):

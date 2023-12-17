@@ -128,7 +128,6 @@ class NNModule(nn.Module):
                     model_config.__dict__[k] = config.__dict__[k]
         if model_config is not None:
             config = copy.copy(model_config)
-        vocab_size = config.vocab_size
         # Instantiate model.
         model = cls(config, *inputs, **kwargs)
         if not model_state:

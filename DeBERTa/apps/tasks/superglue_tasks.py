@@ -476,7 +476,6 @@ class MultiRCTask(SuperGLUE):
             labels = self.get_labels()
             for qidx in results:
                 qr = results[qidx]
-                m = 0
                 for answer in qr:
                     label_id = np.argmax(answer["logit"])
                     answer["label"] = labels[label_id]
@@ -709,7 +708,7 @@ class ReCoRDTask(Task):
 
         def metrics_fn(logits, labels):
             predictions = self.produce_answers(logits, examples)
-            all_predictions = {id: [a["text"] for a in predictions[id]] for id in predictions}
+            {id: [a["text"] for a in predictions[id]] for id in predictions}
             top1predictions = {id: predictions[id][0]["text"] for id in predictions}
             answers = {e.qid: e.answers for e in examples}
             metrics = ReCoRD_Eval(answers, top1predictions)
@@ -861,11 +860,11 @@ class ReCoRDTask(Task):
                 question = qa["query"]
                 placeholder = "@placeholder"
                 pl_pos = question.index(placeholder)
-                q_tokens = (
-                    self.tokenizer.tokenize(question[:pl_pos])
-                    + ["[MASK]"]
-                    + self.tokenizer.tokenize(question[pl_pos + len(placeholder) :])
-                )
+                q_tokens = [
+                    *self.tokenizer.tokenize(question[:pl_pos]),
+                    "[MASK]",
+                    *self.tokenizer.tokenize(question[pl_pos + len(placeholder) :]),
+                ]
                 place_idx = q_tokens.index("[MASK]")
                 qid = qa["idx"]
                 if "answers" in qa:
@@ -1004,7 +1003,7 @@ class ReCoRDTask(Task):
             len(entities) <= max_entities
         ), f"Entities number {len(entities)} exceeds the maxium allowed entities {max_entities}"
         entity_indice = []
-        for e, span in entities:
+        for _e, span in entities:
             token_pos = list(range(span[0] + 1, span[1] + 1))
             entity_indice.append(token_pos + [0] * (max_entity_span - len(token_pos)))
         for _ in range(len(entities), max_entities):
@@ -1389,7 +1388,7 @@ class WiCTask(SuperGLUE):
         for d in data:
             s1 = d["sentence1"]
             s2 = d["sentence2"]
-            word = d["word"]
+            d["word"]
             label = str(d["label"]).lower() if "label" in d else None
             start1, end1 = d["start1"], d["end1"]
             start2, end2 = d["start2"], d["end2"]
@@ -1535,7 +1534,7 @@ def test_multirc_load_data():
     data = "/mount/biglm/bert/superglue/data/MultiRC/train.jsonl"
     task = MultiRCTask(os.path.dirname(data), tokenizer)
     examples = task.load_data(data)
-    feature = task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
+    task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
 
     pdb.set_trace()
 
@@ -1545,5 +1544,5 @@ def test_wic_load_data():
     data = "/mount/biglm/bert/superglue/data/WiC/test.jsonl"
     task = WiCTask(os.path.dirname(data), tokenizer)
     examples = task.load_data(data)
-    feature = task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
+    task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
     pdb.set_trace()

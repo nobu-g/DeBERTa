@@ -179,7 +179,6 @@ class RACETask(Task):
                 type_ids.extend([i] * (len(s) + 1))
             token_ids = tokenizer.convert_tokens_to_ids(tokens)
             pos_ids = list(range(len(token_ids)))
-            rel_pos = []
             input_mask = [1] * len(token_ids)
             features["input_ids"].append(token_ids)
             features["type_ids"].append(type_ids)

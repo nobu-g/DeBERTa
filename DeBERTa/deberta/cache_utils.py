@@ -108,14 +108,14 @@ def load_model_state(path_or_pretrained_id, tag=None, no_cache=False, cache_dir=
         os.makedirs(cache_dir, exist_ok=True)
         model_path = os.path.join(cache_dir, "pytorch_model.bin")
         if (not os.path.exists(model_path)) or no_cache:
-            asset = download_asset(
+            download_asset(
                 pretrained.model_url,
                 "pytorch_model.bin",
                 tag=tag,
                 no_cache=no_cache,
                 cache_dir=cache_dir,
             )
-            asset = download_asset(
+            download_asset(
                 pretrained.config_url,
                 "model_config.json",
                 tag=tag,
@@ -159,11 +159,11 @@ def load_vocab(
         outname = os.path.basename(url)
         vocab_path = os.path.join(cache_dir, outname)
         if (not os.path.exists(vocab_path)) or no_cache:
-            asset = download_asset(url, outname, tag=tag, no_cache=no_cache, cache_dir=cache_dir)
+            download_asset(url, outname, tag=tag, no_cache=no_cache, cache_dir=cache_dir)
     if vocab_type is None:
         vocab_type = "spm"
     return vocab_path, vocab_type
 
 
 def test_download():
-    vocab = load_vocab()
+    load_vocab()

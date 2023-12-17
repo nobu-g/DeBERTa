@@ -56,7 +56,7 @@ class ReCoRDQAModel(NNModule):
         # bxexspxd
         entities = torch.gather(
             tokens.unsqueeze(1).expand(entity_indice.size()[:2] + tokens.size()[1:]),
-            index=entity_indice.long().unsqueeze(-1).expand(entity_indice.size() + (tokens.size(-1),)),
+            index=entity_indice.long().unsqueeze(-1).expand((*entity_indice.size(), tokens.size(-1))),
             dim=-2,
         )
         ctx = tokens[:, :1, :] / math.sqrt(tokens.size(-1))
@@ -65,7 +65,7 @@ class ReCoRDQAModel(NNModule):
         # bxexspx1
         entity_score = torch.gather(
             att_score.unsqueeze(1).expand(entity_indice.size()[:2] + att_score.size()[1:]),
-            index=entity_indice.long().unsqueeze(-1).expand(entity_indice.size() + (att_score.size(-1),)),
+            index=entity_indice.long().unsqueeze(-1).expand((*entity_indice.size(), att_score.size(-1))),
             dim=-2,
         )
         entity_score = (
