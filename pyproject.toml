@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "DeBERTa"
+version = "0.1.0" # Update this based on your VERSION file or other logic
+description = "Decoding enhanced BERT with Disentangled Attention"
+authors = ["penhe <penhe@microsoft.com>"]
+license = "MIT"
+readme = "README.md" # This will not include dynamic git version info
+repository = "https://github.com/microsoft/DeBERTa"
+keywords = ["NLP", "deep learning", "transformer", "pytorch", "Attention", "BERT", "RoBERTa", "DeBERTa"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+torch = "~2.1.1"
+sentencepiece = "^0.1.99"
+numpy = "^1.26"
+regex = "^2023.10"
+psutil = "^5.9"
+tqdm = "^4.66"
+scipy = "^1.11"
+ujson = "^5.9"
+seqeval = "^1.2"
+scikit-learn = "^1.3"
+#spacy = "^3.7.2"
+#nltk = "^3.8.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4"
+
+#[tool.poetry.group.docs.dependencies]
+#recommonmark = "*"
+#sphinx = "*"
+#sphinx-markdown-tables = "*"
+#sphinx-rtd-theme = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
