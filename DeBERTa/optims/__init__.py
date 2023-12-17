@@ -10,4 +10,3 @@
 """
 
 from .fp16_optimizer import *
-

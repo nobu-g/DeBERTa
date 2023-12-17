@@ -9,22 +9,23 @@ import string
 import re
 from ...utils import get_logger
 
-logger=get_logger()
+logger = get_logger()
 
-__all__=['normalize_answer', 'evaluate']
+__all__ = ["normalize_answer", "evaluate"]
 
 
 def normalize_answer(s):
     """Lower text and remove punctuation, articles and extra whitespace."""
+
     def remove_articles(text):
-        return re.sub(r'\b(a|an|the)\b', ' ', text)
+        return re.sub(r"\b(a|an|the)\b", " ", text)
 
     def white_space_fix(text):
-        return ' '.join(text.split())
+        return " ".join(text.split())
 
     def remove_punc(text):
         exclude = set(string.punctuation)
-        return ''.join(ch for ch in text if ch not in exclude)
+        return "".join(ch for ch in text if ch not in exclude)
 
     def lower(text):
         return text.lower()
@@ -63,14 +64,16 @@ def evaluate(answers, predictions):
     for qid in answers:
         total += 1
         if qid not in predictions:
-            message = 'Unanswered question {} will receive score 0.'.format(qid)
+            message = "Unanswered question {} will receive score 0.".format(qid)
             logger.warning(message)
             continue
 
-        ground_truths = list(map(lambda x: x['text'], answers[qid]))
+        ground_truths = list(map(lambda x: x["text"], answers[qid]))
         prediction = predictions[qid]
 
-        _exact_match = metric_max_over_ground_truths(exact_match_score, prediction, ground_truths)
+        _exact_match = metric_max_over_ground_truths(
+            exact_match_score, prediction, ground_truths
+        )
         if int(_exact_match) == 1:
             correct_ids.append(qid)
         exact_match += _exact_match
@@ -80,4 +83,4 @@ def evaluate(answers, predictions):
     exact_match = 100.0 * exact_match / total
     f1 = 100.0 * f1 / total
 
-    return {'exact_match': exact_match, 'f1': f1}
+    return {"exact_match": exact_match, "f1": f1}
