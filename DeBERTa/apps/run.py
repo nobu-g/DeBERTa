@@ -18,7 +18,7 @@ from collections.abc import Sequence
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from ..data import (
     AsyncDataLoader,
@@ -40,6 +40,7 @@ from ..utils import *
 from ..utils import xtqdm as tqdm
 from ._utils import merge_distributed
 from .tasks import get_task, load_tasks
+from .tasks.task import EvalData
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
@@ -62,7 +63,7 @@ def create_model(args, num_labels, model_class_fn):
     return model
 
 
-def train_model(args, model, device, train_data, eval_data, run_eval_fn, train_fn=None, loss_fn=None):
+def train_model(args, model, device, train_data: Dataset, eval_data, run_eval_fn, train_fn=None, loss_fn=None):
     total_examples = len(train_data)
     num_train_steps = int(len(train_data) * args.num_train_epochs / args.train_batch_size)
     logger.info("  Training batch size = %d", args.train_batch_size)
@@ -143,7 +144,9 @@ def train_model(args, model, device, train_data, eval_data, run_eval_fn, train_f
     train_fn(args, model, device, data_fn=data_fn, eval_fn=eval_fn, loss_fn=loss_fn)
 
 
-def calc_metrics(predicts, labels, eval_loss, eval_item, eval_results, args, name, prefix, steps, tag):
+def calc_metrics(
+    predicts, labels, eval_loss, eval_item, eval_results: dict[str, tuple], args, name: str, prefix, steps, tag
+):
     tb_metrics = OrderedDict()
     result = OrderedDict()
     metrics_fn = eval_item.metrics_fn
@@ -191,7 +194,7 @@ def calc_metrics(predicts, labels, eval_loss, eval_item, eval_results, args, nam
         return False
 
 
-def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
+def run_eval(args, model, device, eval_data: list[EvalData], prefix=None, tag=None, steps=None):
     # Run prediction for full data
     prefix = f"{tag}_{prefix}" if tag is not None else prefix
     device = torch.device("cpu") if device is None else device
@@ -206,7 +209,7 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
             ort_model = os.path.join(args.output_dir, f"{prefix}_onnx_fp32.bin")
             ort_model_qt = os.path.join(args.output_dir, f"{prefix}_onnx_qt.bin")
 
-    eval_results = OrderedDict()
+    eval_results: dict[str, tuple] = OrderedDict()
     eval_metric = 0
     no_tqdm = (True if os.getenv("NO_TQDM", "0") != "0" else False) or args.rank > 0
     ort_session = None
@@ -214,8 +217,8 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
         name = eval_item.name
         eval_sampler = SequentialSampler(len(eval_item.data))
         batch_sampler = BatchSampler(eval_sampler, args.eval_batch_size)
-        batch_sampler = DistributedBatchSampler(batch_sampler, rank=args.rank, world_size=args.world_size)
-        eval_dataloader = DataLoader(eval_item.data, batch_sampler=batch_sampler, num_workers=args.workers)
+        dist_batch_sampler = DistributedBatchSampler(batch_sampler, rank=args.rank, world_size=args.world_size)
+        eval_dataloader = DataLoader(eval_item.data, batch_sampler=dist_batch_sampler, num_workers=args.workers)
         model.eval()
         eval_loss, eval_accuracy = 0, 0
         nb_eval_steps, nb_eval_examples = 0, 0
@@ -281,12 +284,12 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
 
         eval_loss = eval_loss / nb_eval_steps
         predicts = merge_distributed(predicts, len(eval_item.data))
-        labels = merge_distributed(labels, len(eval_item.data))
+        all_labels: torch.Tensor = merge_distributed(labels, len(eval_item.data))
         if isinstance(predicts, Sequence):
             for k, pred in enumerate(predicts):
                 calc_metrics(
                     pred.detach().cpu().numpy(),
-                    labels.detach().cpu().numpy(),
+                    all_labels.detach().cpu().numpy(),
                     eval_loss,
                     eval_item,
                     eval_results,
@@ -299,7 +302,7 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
         else:
             calc_metrics(
                 predicts.detach().cpu().numpy(),
-                labels.detach().cpu().numpy(),
+                all_labels.detach().cpu().numpy(),
                 eval_loss,
                 eval_item,
                 eval_results,
@@ -313,16 +316,15 @@ def run_eval(args, model, device, eval_data, prefix=None, tag=None, steps=None):
     return eval_results
 
 
-def run_predict(args, model, device, eval_data, prefix=None):
+def run_predict(args, model, device, eval_data: list[EvalData], prefix=None) -> None:
     # Run prediction for full data
-    eval_results = OrderedDict()
-    eval_metric = 0
+    # eval_metric = 0
     for eval_item in eval_data:
         name = eval_item.name
         eval_sampler = SequentialSampler(len(eval_item.data))
         batch_sampler = BatchSampler(eval_sampler, args.eval_batch_size)
-        batch_sampler = DistributedBatchSampler(batch_sampler, rank=args.rank, world_size=args.world_size)
-        eval_dataloader = DataLoader(eval_item.data, batch_sampler=batch_sampler, num_workers=args.workers)
+        dist_batch_sampler = DistributedBatchSampler(batch_sampler, rank=args.rank, world_size=args.world_size)
+        eval_dataloader = DataLoader(eval_item.data, batch_sampler=dist_batch_sampler, num_workers=args.workers)
         model.eval()
         predicts = []
         for batch in tqdm(
@@ -381,14 +383,14 @@ def main(args):
     )
     label_list = task.get_labels()
 
-    eval_data = task.eval_data(max_seq_len=args.max_seq_length)
+    eval_data: list[EvalData] = task.eval_data(max_seq_len=args.max_seq_length)
     logger.info("  Evaluation batch size = %d", args.eval_batch_size)
     if args.do_predict:
         test_data = task.test_data(max_seq_len=args.max_seq_length)
         logger.info("  Prediction batch size = %d", args.predict_batch_size)
 
     if args.do_train:
-        train_data = task.train_data(max_seq_len=args.max_seq_length, debug=args.debug)
+        train_data: Dataset = task.train_data(max_seq_len=args.max_seq_length)
     model_class_fn = task.get_model_class_fn()
     model = create_model(args, len(label_list), model_class_fn)
     if args.do_train:
