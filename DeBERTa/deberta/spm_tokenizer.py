@@ -11,7 +11,6 @@ import os
 import unicodedata
 import pdb
 
-import regex as re
 import sentencepiece as sp
 
 from ..utils import get_logger
@@ -54,7 +53,6 @@ class SPMTokenizer:
             self.add_special_token(t)
 
         self.spm = spm
-        self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
     def tokenize(self, text):
         pieces = self._encode_as_pieces(text)
@@ -65,8 +63,7 @@ class SPMTokenizer:
             else:
                 return x
 
-        pieces = [_norm(p) for p in pieces]
-        return pieces
+        return [_norm(p) for p in pieces]
 
     def convert_tokens_to_ids(self, tokens):
         return [self.vocab[t] if t in self.vocab else 1 for t in tokens]

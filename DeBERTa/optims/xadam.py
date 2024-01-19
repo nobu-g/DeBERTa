@@ -48,7 +48,7 @@ def adamw(
         torch.max(next_v.mul_(beta2), grad.abs().to(next_v), out=next_v)
         update = next_m / (next_v + eps)
     else:
-        next_v.mul_(beta2).addcmul_(beta2_, grad, grad)
+        next_v.mul_(beta2).addcmul_(grad, grad, value=beta2_)
         if eps_mode == 0:
             update = (next_m) * (next_v + eps).rsqrt()
         elif eps_mode == 1:
@@ -56,7 +56,7 @@ def adamw(
         else:  # =2
             update = next_m.clone()
     if weight_decay > 0:
-        update.add_(weight_decay, data)
+        update.add_(data, alpha=weight_decay)
 
     data.add_(-lr, update)
     if (out_data is not None) and len(out_data) > 0:
