@@ -22,10 +22,10 @@ class AsyncDataLoader:
         def _worker():
             while True:
                 try:
-                    queue.put(next(dl))
+                    queue.put(next(dl))  # noqa: F821
                 except StopIteration:
                     break
-            queue.put(None)
+            queue.put(None)  # noqa: F821
 
         t = Thread(target=_worker)
         t.start()

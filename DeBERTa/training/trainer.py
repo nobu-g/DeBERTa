@@ -13,18 +13,17 @@ from collections import OrderedDict, defaultdict
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from ..data import AsyncDataLoader, BatchSampler, DistributedBatchSampler, RandomSampler
 from ..utils import get_logger
-
-logger = get_logger()
-
 from ._utils import batch_to
 from .dist_launcher import get_ngpu
 from .optimizer_utils import create_xoptimizer
 
 __all__ = ["DistributedTrainer", "set_random_seed"]
+
+logger = get_logger()
 
 
 def set_random_seed(seed, cpu_only=False):
@@ -116,7 +115,7 @@ class DistributedTrainer:
             self.accumulative_update = args.accumulative_update
 
         train_data, training_steps, train_sampler = data_fn(self)
-        self.train_data = train_data
+        self.train_data: Dataset = train_data
         self.train_sampler = train_sampler if train_sampler is not None else RandomSampler(len(train_data))
         self.training_epochs = int(getattr(args, "num_train_epochs", 1))
 
@@ -124,9 +123,7 @@ class DistributedTrainer:
             training_steps = getattr(
                 args,
                 "training_steps",
-                (len(training_data) + self.args.train_batch_size - 1)
-                // self.args.train_batch_size
-                * self.training_epochs,
+                (len(train_data) + self.args.train_batch_size - 1) // self.args.train_batch_size * self.training_epochs,
             )
         self.training_steps = training_steps
 

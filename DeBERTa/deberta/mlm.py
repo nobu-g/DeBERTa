@@ -23,14 +23,15 @@ class MLMPredictionHead(nn.Module):
 
         self.LayerNorm = LayerNorm(self.embedding_size, config.layer_norm_eps)
         self.bias = nn.Parameter(torch.zeros(vocab_size))
-        self.pre_norm = PreLayerNorm(config)
+        # https://github.com/microsoft/DeBERTa/issues/20
+        self.pre_norm = PreLayerNorm(config)  # noqa: F821
 
     def forward(self, hidden_states, embeding_weight):
         hidden_states = self.pre_norm(hidden_states)
         hidden_states = self.dense(hidden_states)
         hidden_states = self.transform_act_fn(hidden_states)
         # b x s x d
-        hidden_states = MaskedLayerNorm(self.LayerNorm, hidden_states)
+        hidden_states = MaskedLayerNorm(self.LayerNorm, hidden_states)  # noqa: F821
 
         # b x s x v
         logits = torch.matmul(hidden_states, embeding_weight.t().to(hidden_states)) + self.bias

@@ -1,7 +1,3 @@
-"""Logging util
-@Author: penhe@microsoft.com
-"""
-
 """ Utils for torch jit tracing customer operators/functions
 """
 import os

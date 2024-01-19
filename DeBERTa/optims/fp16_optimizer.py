@@ -183,7 +183,7 @@ class Fp16Optimizer:
             if len(grads) > 1:
                 flattened_grads = _flatten_dense_tensors(grads)
             else:
-                flattened_grads = grads[0], view(-1)
+                flattened_grads = grads[0].view(-1)
 
             if wd > 1:
                 flattened_grads /= wd

@@ -43,8 +43,8 @@ class ExceptionWrapper:
         self.exc_msg = "".join(traceback.format_exception(*exc_info))
 
 
+# Whether to use shared memory in default_collate
 _use_shared_memory = False
-r"""Whether to use shared memory in default_collate"""
 
 MANAGER_STATUS_CHECK_INTERVAL = 5.0
 
@@ -209,9 +209,9 @@ def pin_memory_batch(batch):
         return batch
 
 
+# Whether SIGCHLD handler is set for DataLoader worker failures. Only one
+# handler needs to be set for all DataLoaders in a process.
 _SIGCHLD_handler_set = False
-r"""Whether SIGCHLD handler is set for DataLoader worker failures. Only one
-handler needs to be set for all DataLoaders in a process."""
 
 
 def _set_SIGCHLD_handler():

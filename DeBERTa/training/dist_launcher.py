@@ -164,7 +164,7 @@ def test_dist_launch():
     args.n_gpu = None
     args.no_cuda = False
     args.output_dir = "/tmp"
-    distributed_launch(args, test_functions, (args,))
+    distributed_launch(args, test_functions, (args,))  # noqa: F821
 
 
 def test_init_dist():

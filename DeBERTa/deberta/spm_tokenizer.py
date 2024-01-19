@@ -7,21 +7,18 @@
 # Date: 11/15/2020
 #
 
-
 import os
 import unicodedata
+import pdb
 
 import regex as re
 import sentencepiece as sp
 
 from ..utils import get_logger
 
-logger = get_logger()
-
-
-import pdb
-
 __all__ = ["SPMTokenizer"]
+
+logger = get_logger()
 
 
 class SPMTokenizer:
