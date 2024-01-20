@@ -4,22 +4,26 @@
 #
 
 import copy
+import json
 import os
 import random
 import shutil
 from collections import OrderedDict, defaultdict
+from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import torch
+from datasets import Dataset, disable_caching
 from torch.utils.data import DataLoader
 
 from ...data import (
     AsyncDataLoader,
     BatchSampler,
     DistributedBatchSampler,
-    DynamicDataset,
     ExampleInstance,
-    ExampleSet,
+    FileListDataset,
+    SimpleDataset,
     SequentialSampler,
 )
 from ...data.example import *
@@ -36,12 +40,13 @@ from .task import EvalData, Task
 from .task_registry import register_task
 
 logger = get_logger()
+disable_caching()
 
 __all__ = ["RTDTask"]
 
 
 class RTDModel(NNModule):
-    def __init__(self, config, *wargs, **kwargs):
+    def __init__(self, config, *args, **kwargs):
         super().__init__(config)
         gen_config = config.generator
         disc_config = config.discriminator
@@ -118,7 +123,7 @@ class RTDModel(NNModule):
         new_data["input_ids"] = new_ids.detach()
         return new_data, lm_loss, gen
 
-    def register_discriminator_fw_hook(self, *wargs):
+    def register_discriminator_fw_hook(self, *args):
         def fw_hook(module, *inputs):
             if self.share_embedding == "gdes":  # Gradient-disentangled weight/embedding sharing
                 g_w_ebd = self.generator.deberta.embeddings.word_embeddings
@@ -148,9 +153,9 @@ class RTDModel(NNModule):
 
 @register_task(name="RTD", desc="Replaced token detection pretraining task")
 class RTDTask(Task):
-    def __init__(self, data_dir, tokenizer, args, **kwargs):
+    def __init__(self, data_dir: str, tokenizer, args, **kwargs):
         super().__init__(tokenizer, args, **kwargs)
-        self.data_dir = data_dir
+        self.data_dir: str = data_dir
         self.mask_gen = NGramMaskGenerator(
             tokenizer,
             max_gram=1,
@@ -159,17 +164,11 @@ class RTDTask(Task):
             max_seq_len=args.max_seq_length,
         )
 
-    def train_data(self, max_seq_len=512, **kwargs):
-        data = self.load_data(os.path.join(self.data_dir, "train.txt"))
-        examples = ExampleSet(data)
-        if self.args.num_training_steps is None:
-            dataset_size = len(examples)
-        else:
-            dataset_size = self.args.num_training_steps * self.args.train_batch_size
-        return DynamicDataset(
-            examples,
+    def train_data(self, max_seq_len: int = 512, **kwargs) -> FileListDataset:
+        return FileListDataset(
+            Path(self.data_dir),
+            glob_pat="**/train_*.parquet",
             feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, mask_gen=self.mask_gen),
-            dataset_size=dataset_size,
             shuffle=True,
             **kwargs,
         )
@@ -178,13 +177,26 @@ class RTDTask(Task):
         return list(self.tokenizer.vocab.values())
 
     def eval_data(self, max_seq_len=512, **kwargs):
+        examples = []
+        for ds_name in ["ja_wiki", "ja_cc", "en_wiki", "en_pile", "code_stack"]:
+            input_dir = Path(self.data_dir) / ds_name
+            assert input_dir.exists(), f"{input_dir} doesn't exists"
+            examples += self.load_data(input_dir, glob_pat="**/validation_*.parquet")
+
         ds = [
-            self._data("dev", "valid.txt", "dev"),
+            EvalData(
+                name="dev",
+                examples=examples,
+                metrics_fn=self.get_metrics_fn(),
+                predict_fn=self.get_predict_fn(),
+                ignore_metric=False,
+                critial_metrics=["accuracy"],
+            )
         ]
 
         for d in ds:
             _size = len(d.data)
-            d.data = DynamicDataset(
+            d.data = SimpleDataset(
                 d.data,
                 feature_fn=self.get_feature_fn(max_seq_len=max_seq_len, mask_gen=self.mask_gen),
                 dataset_size=_size,
@@ -196,28 +208,8 @@ class RTDTask(Task):
         """See base class."""
         raise NotImplementedError("This method is not implemented yet.")
 
-    def _data(self, name, path, type_name="dev", ignore_metric=False):
-        if isinstance(path, str):
-            path = [path]
-        data = []
-        for p in path:
-            input_src = os.path.join(self.data_dir, p)
-            assert os.path.exists(input_src), f"{input_src} doesn't exists"
-            data.extend(self.load_data(input_src))
-
-        predict_fn = self.get_predict_fn()
-        examples = ExampleSet(data)
-        return EvalData(
-            name,
-            examples,
-            metrics_fn=self.get_metrics_fn(),
-            predict_fn=predict_fn,
-            ignore_metric=ignore_metric,
-            critial_metrics=["accuracy"],
-        )
-
     def get_metrics_fn(self):
-        """Calcuate metrics based on prediction results"""
+        """Calculate metrics based on prediction results"""
 
         def metrics_fn(logits, labels):
             preds = logits
@@ -227,13 +219,25 @@ class RTDTask(Task):
 
         return metrics_fn
 
-    def load_data(self, path):
+    def load_data(self, path: Path, glob_pat: str = "*.txt") -> list[ExampleInstance]:
         examples = []
-        with open(path, encoding="utf-8") as fs:
-            for l in fs:
-                if len(l) > 1:
-                    example = ExampleInstance(segments=[l])
-                    examples.append(example)
+        assert path.is_dir()
+        for p in path.glob(glob_pat):
+            if p.suffix == ".txt":
+                for line in p.read_text(encoding="utf-8").splitlines():
+                    if len(line) > 1:
+                        example = ExampleInstance(segments=[line])
+                        examples.append(example)
+                continue
+            if p.suffix == ".parquet":
+                dataset = Dataset.from_parquet(str(p), keep_in_memory=True)
+                for tokens in dataset["tokens"]:
+                    examples.append(ExampleInstance(segments=[tokens]))
+            elif p.suffix == ".jsonl":
+                for line in p.read_text().splitlines():
+                    data = json.loads(line)
+                    if len(data) > 0:
+                        examples.append(ExampleInstance(segments=[data["tokens"]]))
         return examples
 
     def get_feature_fn(self, max_seq_len=512, mask_gen=None):
@@ -253,10 +257,10 @@ class RTDTask(Task):
     def example_to_feature(
         self,
         tokenizer,
-        example,
-        max_seq_len=512,
+        example: ExampleInstance,
+        max_seq_len: int = 512,
         rng=None,
-        mask_generator=None,
+        mask_generator: Optional[NGramMaskGenerator] = None,
         ext_params=None,
         **kwargs,
     ):
@@ -264,10 +268,10 @@ class RTDTask(Task):
             rng = random
         max_num_tokens = max_seq_len - 2
 
-        segments = [example.segments[0].strip().split()]
+        segments: list[list[str]] = example.segments  # (1, tokens)
         segments = _truncate_segments(segments, max_num_tokens, rng)
         _tokens = ["[CLS]"] + segments[0] + ["[SEP]"]
-        if mask_generator:
+        if mask_generator is not None:
             tokens, lm_labels = mask_generator.mask_tokens(_tokens, rng)
         token_ids = tokenizer.convert_tokens_to_ids(tokens)
 
@@ -502,7 +506,7 @@ class RTDTask(Task):
             "--num_training_steps",
             type=int,
             default=None,
-            help="Maxium pre-training steps",
+            help="Maximum pre-training steps",
         )
         parser.add_argument(
             "--discriminator_learning_rate",
