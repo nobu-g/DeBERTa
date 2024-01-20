@@ -9,6 +9,7 @@
 
 import mmap
 import random
+from typing import Callable, Optional
 
 import numpy as np
 from torch.utils.data import Dataset
@@ -17,7 +18,7 @@ from ..utils import get_logger
 
 logger = get_logger()
 
-__all__ = ["DynamicDataset"]
+__all__ = ["DynamicDataset", "SimpleDataset"]
 
 
 class DynamicDataset(Dataset):
@@ -61,3 +62,21 @@ class DynamicDataset(Dataset):
         example_idx = self.shuffle_idx[idx % self.dataset_size] % self.ds_len
         example = self.corpus[example_idx, rng, ext_params]
         return self.feature_fn(example, rng, ext_params=ext_params)
+
+
+class SimpleDataset(Dataset):
+    def __init__(self, examples: list, feature_fn: Callable, dataset_size: Optional[int] = None, **kwargs):
+        self.examples: list = examples
+        self.feature_fn: Callable = feature_fn
+        self.dataset_size: int = dataset_size or len(self.examples)
+        logger.info(f"Total corpus examples: {self.dataset_size}")
+        # self.shuffle = shuffle
+
+    def __len__(self):
+        return self.dataset_size
+
+    def __getitem__(self, index: int):
+        index = int(index)
+        example = self.examples[index]
+        rng = random.Random(index)
+        return self.feature_fn(example, rng, ext_params=None)
