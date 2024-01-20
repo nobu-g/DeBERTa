@@ -104,9 +104,7 @@ def train_model(args, model, device, train_data: Dataset, eval_data, run_eval_fn
             loss = output["loss"]
             if isinstance(logits, Sequence):
                 logits = logits[-1]
-            v_teacher = []
 
-            t_logits = None
             if args.vat_lambda > 0:
 
                 def pert_logits_fn(model, **data):
@@ -145,7 +143,16 @@ def train_model(args, model, device, train_data: Dataset, eval_data, run_eval_fn
 
 
 def calc_metrics(
-    predicts, labels, eval_loss, eval_item, eval_results: dict[str, tuple], args, name: str, prefix, steps, tag
+    predicts,
+    labels,
+    eval_loss,
+    eval_item,
+    eval_results: dict[str, tuple],
+    args,
+    name: str,
+    prefix,
+    steps,
+    tag,
 ):
     tb_metrics = OrderedDict()
     result = OrderedDict()
@@ -171,7 +178,7 @@ def calc_metrics(
             logger.info(f"***** Eval results-{name}-{prefix} *****")
             for key in sorted(result.keys()):
                 logger.info("  %s = %s", key, str(result[key]))
-                writer.write("%s = %s\n" % (key, str(result[key])))
+                writer.write(f"{key} = {result[key]!s}\n")
                 tb_metrics[f"{name}/{key}"] = result[key]
 
         if predict_fn is not None:
@@ -257,7 +264,7 @@ def run_eval(args, model, device, eval_data: list[EvalData], prefix=None, tag=No
                         if isinstance(_batch[k], torch.Tensor):
                             numpy_input[k] = _batch[k].cpu().numpy()
 
-                    warmup = ort_session.run(None, numpy_input)
+                    ort_session.run(None, numpy_input)
                     # cuda_session = ort.InferenceSession(ort_model, sess_options=sess_opt, providers=['CUDAExecutionProvider'])
                     # warmup = cuda_session.run(None, numpy_input)
                 numpy_input = {}
@@ -318,7 +325,6 @@ def run_eval(args, model, device, eval_data: list[EvalData], prefix=None, tag=No
 
 def run_predict(args, model, device, eval_data: list[EvalData], prefix=None) -> None:
     # Run prediction for full data
-    # eval_metric = 0
     for eval_item in eval_data:
         name = eval_item.name
         eval_sampler = SequentialSampler(len(eval_item.data))

@@ -94,13 +94,17 @@ class DisentangledSelfAttention(nn.Module):
         if self.relative_attention:
             rel_embeddings = self.pos_dropout(rel_embeddings)
             rel_att = self.disentangled_attention_bias(
-                query_layer, key_layer, relative_pos, rel_embeddings, scale_factor
+                query_layer,
+                key_layer,
+                relative_pos,
+                rel_embeddings,
+                scale_factor,
             )
 
         if rel_att is not None:
             attention_scores = attention_scores + rel_att
         attention_scores = (attention_scores - attention_scores.max(dim=-1, keepdim=True).values.detach()).to(
-            hidden_states
+            hidden_states,
         )
         attention_scores = attention_scores.view(
             -1,
@@ -157,23 +161,28 @@ class DisentangledSelfAttention(nn.Module):
         relative_pos = relative_pos.long().to(query_layer.device)
 
         rel_embeddings = rel_embeddings[self.pos_ebd_size - att_span : self.pos_ebd_size + att_span, :].unsqueeze(
-            0
+            0,
         )  # .repeat(query_layer.size(0)//self.num_attention_heads, 1, 1)
         if self.share_att_key:
             pos_query_layer = self.transpose_for_scores(
-                self.query_proj(rel_embeddings), self.num_attention_heads
+                self.query_proj(rel_embeddings),
+                self.num_attention_heads,
             ).repeat(query_layer.size(0) // self.num_attention_heads, 1, 1)  # .split(self.all_head_size, dim=-1)
             pos_key_layer = self.transpose_for_scores(self.key_proj(rel_embeddings), self.num_attention_heads).repeat(
-                query_layer.size(0) // self.num_attention_heads, 1, 1
+                query_layer.size(0) // self.num_attention_heads,
+                1,
+                1,
             )  # .split(self.all_head_size, dim=-1)
         else:
             if "c2p" in self.pos_att_type or "p2p" in self.pos_att_type:
                 pos_key_layer = self.transpose_for_scores(
-                    self.pos_key_proj(rel_embeddings), self.num_attention_heads
+                    self.pos_key_proj(rel_embeddings),
+                    self.num_attention_heads,
                 ).repeat(query_layer.size(0) // self.num_attention_heads, 1, 1)  # .split(self.all_head_size, dim=-1)
             if "p2c" in self.pos_att_type or "p2p" in self.pos_att_type:
                 pos_query_layer = self.transpose_for_scores(
-                    self.pos_query_proj(rel_embeddings), self.num_attention_heads
+                    self.pos_query_proj(rel_embeddings),
+                    self.num_attention_heads,
                 ).repeat(query_layer.size(0) // self.num_attention_heads, 1, 1)  # .split(self.all_head_size, dim=-1)
 
         score = 0
@@ -218,7 +227,7 @@ class DisentangledSelfAttention(nn.Module):
                         query_layer.size(1),
                         query_layer.size(2),
                         relative_pos.size(-1),
-                    ]
+                    ],
                 ),
             )
             score += p2p_att

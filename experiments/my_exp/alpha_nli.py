@@ -109,7 +109,7 @@ class AlphaNLITask(Task):
             preds = np.argmax(probs, axis=-1)
             labels = ["1", "2"]
             with open(output, "w", encoding="utf-8") as fs:
-                for i, p in enumerate(preds):
+                for p in preds:
                     fs.write(labels[p] + "\n")
 
         return predict_fn
@@ -181,7 +181,7 @@ class AlphaNLITask(Task):
         opt1_token_size = [len(e.segments[1]) for e in examples]
         total_size = [len(s) + len(e.segments[0]) for e in examples for s in e.segments[1:]]
         logger.info(
-            f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
+            f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}",
         )
         # logger.info(f'Question statistics: {get_stats(q_token_size)}')
         logger.info(f"Opt1 statistics: {get_stats(opt1_token_size)}")

@@ -69,15 +69,15 @@ class ReplacedTokenDetectionModel(NNModule):
         position_ids=None,
         attention_mask=None,
     ):
-        device = list(self.parameters())[0].device
+        device = next(iter(self.parameters())).device
         input_ids = input_ids.to(device)
         input_mask = input_mask.to(device)
         type_ids = None
         lm_labels = labels.to(device)
-        if attention_mask is not None:
-            attention_mask = attention_mask.to(device)
-        else:
-            attention_mask = input_mask
+        # if attention_mask is not None:
+        #     attention_mask = attention_mask.to(device)
+        # else:
+        #     attention_mask = input_mask
 
         encoder_output = self.deberta(
             input_ids,
@@ -87,9 +87,11 @@ class ReplacedTokenDetectionModel(NNModule):
             position_ids=position_ids,
         )
         encoder_layers = encoder_output["hidden_states"]
-        ctx_layer = encoder_layers[-1]
         (mask_logits, mask_labels, mask_loss) = self.mask_predictions(
-            encoder_layers[-1], input_ids, input_mask, lm_labels
+            encoder_layers[-1],
+            input_ids,
+            input_mask,
+            lm_labels,
         )
 
         return {

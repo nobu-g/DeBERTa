@@ -143,7 +143,6 @@ def initialize_distributed(args, join=True):
 
 def test_dist_launch():
     def test_functions(args):
-        global logger
         set_logger(
             args.task_name,
             os.path.join(args.output_dir, f"training_{args.task_name}_{args.node_rank}.log"),

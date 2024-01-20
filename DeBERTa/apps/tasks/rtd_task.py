@@ -23,8 +23,8 @@ from ...data import (
     DistributedBatchSampler,
     ExampleInstance,
     FileListDataset,
-    SimpleDataset,
     SequentialSampler,
+    SimpleDataset,
 )
 from ...data.example import *
 from ...data.example import _truncate_segments
@@ -79,7 +79,6 @@ class RTDModel(NNModule):
         unexpected_keys,
         error_msgs,
     ):
-        new_state = dict()
         bert_prefix = prefix + "bert."
         deberta_prefix = prefix + "deberta."
         for k in list(state_dict.keys()):
@@ -113,7 +112,7 @@ class RTDModel(NNModule):
         lm_labels = input_data["labels"]
         lm_loss = gen["loss"]
         mask_index = (lm_labels.view(-1) > 0).nonzero().view(-1)
-        gen_pred = torch.argmax(lm_logits, dim=1).detach().cpu().numpy()
+        torch.argmax(lm_logits, dim=1).detach().cpu().numpy()
         topk_labels, top_p = self.topk_sampling(lm_logits, topk=1, temp=temp)
 
         top_ids = torch.zeros_like(lm_labels.view(-1))
@@ -191,7 +190,7 @@ class RTDTask(Task):
                 predict_fn=self.get_predict_fn(),
                 ignore_metric=False,
                 critial_metrics=["accuracy"],
-            )
+            ),
         ]
 
         for d in ds:
@@ -424,8 +423,7 @@ class RTDTask(Task):
             return 0
 
         def d_loss_fn(trainer, model, data):
-            train_losses = OrderedDict()
-            with_mlm_loss = True
+            OrderedDict()
             disc = model(**data)
             rtd_loss = disc["loss"]
             loss = args.rtd_lambda * rtd_loss.mean()
@@ -481,7 +479,7 @@ class RTDTask(Task):
         rand = random.Random(0)
 
         def loss_fn(trainer, model, data):
-            train_losses = OrderedDict()
+            OrderedDict()
             new_data, mlm_loss, gen_output = model.make_electra_data(data, rand=rand)
             disc = model.discriminator_fw(**new_data)
             rtd_loss = disc["loss"]

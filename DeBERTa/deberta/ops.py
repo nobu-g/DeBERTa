@@ -16,7 +16,7 @@ from torch.nn import LayerNorm
 from ..utils.jit_tracing import traceable
 
 if version.Version(torch.__version__) >= version.Version("1.0.0"):
-    from torch import _softmax_backward_data as _softmax_backward_data
+    from torch import _softmax_backward_data
 else:
     from torch import softmax_backward_data as _softmax_backward_data
 

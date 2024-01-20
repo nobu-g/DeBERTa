@@ -78,7 +78,7 @@ class TrainerState:
                 self.examples,
                 self.loss_scale,
                 end - start,
-            )
+            ),
         )
         self._last_report_time = end
         self._last_report_step = self.steps
@@ -165,7 +165,7 @@ class DistributedTrainer:
 
         rank = self.args.rank
         world_size = self.args.world_size
-        for n_epoch in range(self.trainer_state.epochs, self.training_epochs):
+        for _n_epoch in range(self.trainer_state.epochs, self.training_epochs):
             batch_sampler = BatchSampler(self.train_sampler, self.args.train_batch_size)
             batch_sampler = DistributedBatchSampler(batch_sampler, rank=rank, world_size=world_size)
             batch_sampler.next = self.trainer_state.next_batch
@@ -178,7 +178,7 @@ class DistributedTrainer:
                 pin_memory=False,
             )
             torch.cuda.empty_cache()
-            for step, batch in enumerate(AsyncDataLoader(train_dataloader, 100)):
+            for _step, batch in enumerate(AsyncDataLoader(train_dataloader, 100)):
                 if self.trainer_state.steps >= self.training_steps:
                     break
                 bs_scale = 1

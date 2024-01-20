@@ -21,7 +21,9 @@ def metric_f1(logits, labels):
     return f1_score(labels, predicts)
 
 
-def metric_macro_f1(logits, ground_truth, labels=[0, 1]):
+def metric_macro_f1(logits, ground_truth, labels=None):
+    if labels is None:
+        labels = [0, 1]
     predicts = np.argmax(logits, axis=1)
     f1 = []
     for l in labels:

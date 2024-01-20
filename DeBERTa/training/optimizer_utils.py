@@ -43,7 +43,9 @@ def xadam_factory(args, training_steps=None):
     return optimizer_fn
 
 
-def create_xoptimizer(model, args, num_train_steps=None, no_decay=["bias", "LayerNorm.weight"]):
+def create_xoptimizer(model, args, num_train_steps=None, no_decay=None):
+    if no_decay is None:
+        no_decay = ["bias", "LayerNorm.weight"]
     if args.fp16:
         loss_scaler = ExpLossScaler(scale_interval=args.scale_steps, init_scale=args.loss_scale)
     else:
@@ -74,7 +76,7 @@ def create_xoptimizer(model, args, num_train_steps=None, no_decay=["bias", "Laye
         group_ranks = [g * (world_size // num_groups) for g in range(num_groups)]
     else:
         # TODO: Fix inconsistent results with different group size
-        max_group_size = max(64 * 1024 * 1024, max(param_size))
+        max_group_size = max(64 * 1024 * 1024, *param_size)
         num_groups = (sum(param_size) + max_group_size - 1) // max_group_size
         group_sizes = [0 for _ in range(num_groups)]
 

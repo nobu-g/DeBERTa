@@ -45,11 +45,18 @@ target-version = "py38"
 ignore = [
     "F403",
     "F405",
-    "E741",
     "F841",
+    "F821",
+    "E741",
     "E722",
+    "E501",
+    "B904",
+    "B020",
+    "B023",
+    "PLW2901",
+    "PLW0603",
 ]
-
+select = ["F", "E", "W", "I", "B", "UP", "COM", "PT", "PYI"]
 
 [build-system]
 requires = ["poetry-core"]

@@ -86,7 +86,8 @@ def hook_sift_layer(
         _modules = [k for n, k in model.named_modules() if target_module in n]
     else:
         assert isinstance(
-            target_module, torch.nn.Module
+            target_module,
+            torch.nn.Module,
         ), f"{type(target_module)} is not an instance of torch.nn.Module"
         _modules = [target_module]
     adv_modules = []
@@ -168,7 +169,7 @@ class AdversarialLearner:
         pert_loss = loss_fn(pert_logits, target.detach()).sum()
         pert_loss.backward()
         for m in self.adv_modules:
-            ok = m.update_delta(True)
+            m.update_delta(True)
 
         for r, p in zip(self.prev, self.parameters):
             p.requires_grad_(r)

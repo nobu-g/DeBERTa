@@ -129,7 +129,7 @@ class NERTask(Task):
             labels = self.get_labels()
             with open(output, "w", encoding="utf-8") as fs:
                 fs.write("index\tpredictions\n")
-                for i, (e, p) in enumerate(zip(examples, preds)):
+                for _i, (e, p) in enumerate(zip(examples, preds)):
                     words = "".join(e.sentence).split(" ")
                     tokens = e.segments[0]
                     bw = 0
@@ -193,7 +193,7 @@ class NERTask(Task):
                             segments=[merged_tokens],
                             label=merged_labels,
                             sentence=merged_words,
-                        )
+                        ),
                     )
                     size = 0
                     merged_words = []
@@ -209,7 +209,7 @@ class NERTask(Task):
                         segments=[merged_tokens],
                         label=merged_labels,
                         sentence=merged_words,
-                    )
+                    ),
                 )
 
         def get_stats(l):
@@ -217,7 +217,7 @@ class NERTask(Task):
 
         ctx_token_size = [sum(len(w) for w in e.segments[0]) for e in examples]
         logger.info(
-            f"Statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
+            f"Statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}",
         )
 
         return examples
@@ -235,7 +235,6 @@ class NERTask(Task):
     ):
         if not rng:
             rng = random
-        max_num_tokens = max_seq_len - 2
         features = OrderedDict()
         tokens = ["[CLS]"]
         target_labels = [-1]
@@ -304,5 +303,5 @@ def test_ner_load_data():
     task = NERTask(os.path.dirname(data), tokenizer)
     # docs = task.extract_docs(data)
     examples = task.load_data(data)
-    feature = task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
+    task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
     pdb.set_trace()

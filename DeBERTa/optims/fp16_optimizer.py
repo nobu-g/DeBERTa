@@ -236,7 +236,7 @@ class Fp16Optimizer:
         if torch.isnan(norm) or torch.isinf(norm):  # in ['-inf', 'inf', 'nan']:
             return None
 
-        scaled_norm = norm.detach().item() / loss_scale
+        norm.detach().item() / loss_scale
         grad_scale = loss_scale
 
         if self.max_grad_norm > 0:

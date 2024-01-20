@@ -64,8 +64,7 @@ class RandomSampler(Sampler):
 
     def __iter__(self):
         self.rng.shuffle(self.indices)
-        for i in self.indices:
-            yield i
+        yield from self.indices
 
     def __len__(self):
         return len(self.indices)
@@ -76,8 +75,7 @@ class SequentialSampler(Sampler):
         self.indices = np.array(np.arange(total_samples))
 
     def __iter__(self):
-        for i in self.indices:
-            yield i
+        yield from self.indices
 
     def __len__(self):
         return len(self.indices)

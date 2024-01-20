@@ -8,11 +8,11 @@
 #
 
 import random
+from pathlib import Path
 from typing import Callable
 
 import datasets
 import numpy as np
-from pathlib import Path
 from torch.utils.data import Dataset
 
 from ..data import ExampleInstance

@@ -244,7 +244,7 @@ class MRPCTask(Task):
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
         examples = ExampleSet(
-            [ExampleInstance((l[3], l[4]), self.label2id(l[0])) for l in data[1:]]
+            [ExampleInstance((l[3], l[4]), self.label2id(l[0])) for l in data[1:]],
         )  # if l[3] in ['slate']])
         if dataset_size is None:
             dataset_size = len(examples) * epochs
@@ -339,7 +339,7 @@ class QNLITask(Task):
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
         examples = ExampleSet(
-            [ExampleInstance((l[2], l[1]), self.label2id(l[3])) for l in data[1:]]
+            [ExampleInstance((l[2], l[1]), self.label2id(l[3])) for l in data[1:]],
         )  # if l[3] in ['slate']])
         if dataset_size is None:
             dataset_size = len(examples) * epochs
@@ -583,7 +583,7 @@ class SST2Task(Task):
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
         examples = ExampleSet(
-            [ExampleInstance((l[0],), self.label2id(l[1])) for l in data[1:]]
+            [ExampleInstance((l[0],), self.label2id(l[1])) for l in data[1:]],
         )  # if l[3] in ['slate']])
         if dataset_size is None:
             dataset_size = len(examples) * epochs
@@ -664,7 +664,7 @@ class QQPTask(Task):
         assert os.path.exists(input_src), f"{input_src} doesn't exists"
         data = self._read_tsv(input_src)
         examples = ExampleSet(
-            [ExampleInstance((l[3], l[4]), self.label2id(l[5])) for l in data[1:] if len(l) == 6]
+            [ExampleInstance((l[3], l[4]), self.label2id(l[5])) for l in data[1:] if len(l) == 6],
         )  # if l[3] in ['slate']])
         if dataset_size is None:
             dataset_size = len(examples) * epochs

@@ -167,7 +167,7 @@ class BoolQTask(SuperGLUE):
         q_token_size = [len(e.segments[1]) for e in examples]
         total_size = [len(e.segments[0]) + len(e.segments[1]) for e in examples]
         logger.info(
-            f"Context statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
+            f"Context statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}",
         )
         logger.info(f"question statistics: {get_stats(q_token_size)}")
         logger.info(f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}")
@@ -325,7 +325,7 @@ class CBTask(SuperGLUE):
         q_token_size = [len(e.segments[1]) for e in examples]
         total_size = [len(e.segments[0]) + len(e.segments[1]) for e in examples]
         logger.info(
-            f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
+            f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}",
         )
         logger.info(f"Hypothesis statistics: {get_stats(q_token_size)}")
         logger.info(f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}")
@@ -471,12 +471,11 @@ class MultiRCTask(SuperGLUE):
                         "qid": e.qidx,
                         "doc_id": e.doc_id,
                         "ans_id": e.aidx,
-                    }
+                    },
                 )
             labels = self.get_labels()
             for qidx in results:
                 qr = results[qidx]
-                m = 0
                 for answer in qr:
                     label_id = np.argmax(answer["logit"])
                     answer["label"] = labels[label_id]
@@ -555,7 +554,7 @@ class MultiRCTask(SuperGLUE):
                             aidx=aidx,
                             qidx=qidx,
                             doc_id=pid,
-                        )
+                        ),
                     )
 
         def get_stats(l):
@@ -566,7 +565,7 @@ class MultiRCTask(SuperGLUE):
         # a_token_size = [len(e.segments[2]) for e in examples]
         total_size = [sum(len(s) for s in e.segments) for e in examples]
         logger.info(
-            f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
+            f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}",
         )
         logger.info(f"Question statistics: {get_stats(q_token_size)}")
         # logger.info(f'Answer statistics: {get_stats(a_token_size)}')
@@ -709,7 +708,7 @@ class ReCoRDTask(Task):
 
         def metrics_fn(logits, labels):
             predictions = self.produce_answers(logits, examples)
-            all_predictions = {id: [a["text"] for a in predictions[id]] for id in predictions}
+            {id: [a["text"] for a in predictions[id]] for id in predictions}
             top1predictions = {id: predictions[id][0]["text"] for id in predictions}
             answers = {e.qid: e.answers for e in examples}
             metrics = ReCoRD_Eval(answers, top1predictions)
@@ -765,7 +764,7 @@ class ReCoRDTask(Task):
                         "end": end,
                         "text": example.passage[start:end],
                         "score": float(score),
-                    }
+                    },
                 )
             answers[qid] = list(sorted(answer, key=lambda x: x["score"], reverse=True))
 
@@ -861,11 +860,11 @@ class ReCoRDTask(Task):
                 question = qa["query"]
                 placeholder = "@placeholder"
                 pl_pos = question.index(placeholder)
-                q_tokens = (
-                    self.tokenizer.tokenize(question[:pl_pos])
-                    + ["[MASK]"]
-                    + self.tokenizer.tokenize(question[pl_pos + len(placeholder) :])
-                )
+                q_tokens = [
+                    *self.tokenizer.tokenize(question[:pl_pos]),
+                    "[MASK]",
+                    *self.tokenizer.tokenize(question[pl_pos + len(placeholder) :]),
+                ]
                 place_idx = q_tokens.index("[MASK]")
                 qid = qa["idx"]
                 if "answers" in qa:
@@ -903,7 +902,7 @@ class ReCoRDTask(Task):
                                             entity_start - sub_offset,
                                             entity_end - sub_offset,
                                         ],
-                                    ]
+                                    ],
                                 )
                         sub_labels = None
                         if labels is not None:
@@ -950,7 +949,7 @@ class ReCoRDTask(Task):
         entity_tokens = [e[1][1] - e[1][0] for ex in examples for e in ex.entity_spans]
         total_size = [len(e.segments[0]) + len(e.segments[1]) for e in examples]
         logger.info(
-            f"Context statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
+            f"Context statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}",
         )
         logger.info(f"Question statistics: {get_stats(q_token_size)}")
         logger.info(f"Entities statistics: {get_stats(entities)}")
@@ -1004,7 +1003,7 @@ class ReCoRDTask(Task):
             len(entities) <= max_entities
         ), f"Entities number {len(entities)} exceeds the maxium allowed entities {max_entities}"
         entity_indice = []
-        for e, span in entities:
+        for _e, span in entities:
             token_pos = list(range(span[0] + 1, span[1] + 1))
             entity_indice.append(token_pos + [0] * (max_entity_span - len(token_pos)))
         for _ in range(len(entities), max_entities):
@@ -1159,26 +1158,26 @@ class COPATask(SuperGLUE):
                     ExampleInstance(
                         segments=[opt1, passage],
                         label=label == 0 if label is not None else None,
-                    )
+                    ),
                 )
                 examples.append(
                     ExampleInstance(
                         segments=[opt2, passage],
                         label=label == 1 if label is not None else None,
-                    )
+                    ),
                 )
             else:
                 examples.append(
                     ExampleInstance(
                         segments=[passage, opt1],
                         label=label == 0 if label is not None else None,
-                    )
+                    ),
                 )
                 examples.append(
                     ExampleInstance(
                         segments=[passage, opt2],
                         label=label == 1 if label is not None else None,
-                    )
+                    ),
                 )
             # if question.strip().lower() == "cause":
             #  examples.append(ExampleInstance(segments=[opt1 + " caused " + passage], label=label==0 if label is not None else None))
@@ -1194,7 +1193,7 @@ class COPATask(SuperGLUE):
         # q_token_size = [len(e.segments[1]) for e in examples]
         total_size = [sum(len(s) for s in e.segments) for e in examples]
         logger.info(
-            f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}"
+            f"Premise statistics: {get_stats(ctx_token_size)}, long={len([t for t in ctx_token_size if t > 500])}/{len(ctx_token_size)}",
         )
         # logger.info(f'Question statistics: {get_stats(q_token_size)}')
         logger.info(f"Total statistics: {get_stats(total_size)}, long={len([t for t in total_size if t>500])}")
@@ -1389,7 +1388,7 @@ class WiCTask(SuperGLUE):
         for d in data:
             s1 = d["sentence1"]
             s2 = d["sentence2"]
-            word = d["word"]
+            d["word"]
             label = str(d["label"]).lower() if "label" in d else None
             start1, end1 = d["start1"], d["end1"]
             start2, end2 = d["start2"], d["end2"]
@@ -1436,7 +1435,7 @@ class WiCTask(SuperGLUE):
         span1 = [e.spans[0][1] - e.spans[0][0] for e in examples]
         total_size = [len(e.segments[0]) + len(e.segments[1]) for e in examples]
         logger.info(
-            f"Sentence1 statistics: {get_stats(s1_token_size)}, long={len([t for t in s1_token_size if t > 500])}/{len(s1_token_size)}"
+            f"Sentence1 statistics: {get_stats(s1_token_size)}, long={len([t for t in s1_token_size if t > 500])}/{len(s1_token_size)}",
         )
         logger.info(f"Sentence2 statistics: {get_stats(s2_token_size)}")
         logger.info(f"Word span statistics: {get_stats(span1)}")
@@ -1535,7 +1534,7 @@ def test_multirc_load_data():
     data = "/mount/biglm/bert/superglue/data/MultiRC/train.jsonl"
     task = MultiRCTask(os.path.dirname(data), tokenizer)
     examples = task.load_data(data)
-    feature = task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
+    task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
 
     pdb.set_trace()
 
@@ -1545,5 +1544,5 @@ def test_wic_load_data():
     data = "/mount/biglm/bert/superglue/data/WiC/test.jsonl"
     task = WiCTask(os.path.dirname(data), tokenizer)
     examples = task.load_data(data)
-    feature = task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
+    task.example_to_feature(tokenizer, examples[0], max_seq_len=512)
     pdb.set_trace()

@@ -1,3 +1,12 @@
+import collections.abc
+import os
+import queue
+import re
+import signal
+import sys
+import threading
+import traceback
+
 import torch
 from packaging import version
 from torch import multiprocessing
@@ -6,31 +15,19 @@ from torch._C import (
     _remove_worker_pids,
     _set_worker_signal_handlers,
 )
+from torch.utils.data import BatchSampler, RandomSampler, SequentialSampler
 
 if version.Version(torch.__version__) >= version.Version("1.0.0"):
     from torch._C import _set_worker_pids
 else:
     from torch._C import _update_worker_pids as _set_worker_pids
 
-import collections.abc
-import os
-import re
-import signal
-import sys
-import threading
-import traceback
-
-from torch.utils.data import BatchSampler, RandomSampler, SequentialSampler
 
 IS_WINDOWS = sys.platform == "win32"
 if IS_WINDOWS:
     import ctypes
     from ctypes.wintypes import BOOL, DWORD, HANDLE
 
-if sys.version_info[0] == 2:
-    import Queue as queue
-else:
-    import queue
 
 __all__ = ["SequentialDataLoader"]
 
@@ -344,7 +341,8 @@ class _SequentialDataLoaderIter:
             raise StopIteration
 
         while True:
-            assert not self.shutdown and self.batches_outstanding > 0
+            assert not self.shutdown
+            assert self.batches_outstanding > 0
             idx, batch = self._get_batch()
             self.batches_outstanding -= 1
             if idx != self.rcvd_idx:
@@ -496,7 +494,7 @@ class SequentialDataLoader:
         if batch_sampler is not None:
             if batch_size > 1 or shuffle or sampler is not None or drop_last:
                 raise ValueError(
-                    "batch_sampler option is mutually exclusive " "with batch_size, shuffle, sampler, and " "drop_last"
+                    "batch_sampler option is mutually exclusive " "with batch_size, shuffle, sampler, and " "drop_last",
                 )
             self.batch_size = None
             self.drop_last = None
@@ -523,7 +521,7 @@ class SequentialDataLoader:
         if self.__initialized and attr in ("batch_size", "sampler", "drop_last"):
             raise ValueError(f"{attr} attribute should not be set after {self.__class__.__name__} is " "initialized")
 
-        super(SequentialDataLoader, self).__setattr__(attr, val)
+        super().__setattr__(attr, val)
 
     def __iter__(self):
         return _SequentialDataLoaderIter(self)

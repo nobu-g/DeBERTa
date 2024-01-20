@@ -43,8 +43,7 @@ class EnhancedMaskDecoder(torch.nn.Module):
             relative_pos=relative_pos,
         )
         loss_fct = torch.nn.CrossEntropyLoss(reduction="none")
-        lm_loss = torch.tensor(0).to(ctx_layers[-1])
-        arlm_loss = torch.tensor(0).to(ctx_layers[-1])
+        # lm_loss = torch.tensor(0).to(ctx_layers[-1])
         ctx_layer = mlm_ctx_layers[-1]
         lm_logits = self.lm_head(ctx_layer, ebd_weight).float()
         lm_logits = lm_logits.view(-1, lm_logits.size(-1))
@@ -71,7 +70,6 @@ class EnhancedMaskDecoder(torch.nn.Module):
             attention_mask = att_mask * att_mask.squeeze(-2).unsqueeze(-1)
         elif attention_mask.dim() == 3:
             attention_mask = attention_mask.unsqueeze(1)
-        target_mask = target_ids > 0
         hidden_states = encoder_layers[-2]
         if not self.position_biased_input:
             layers = [encoder.layer[-1] for _ in range(2)]
@@ -118,7 +116,8 @@ class MaskedLanguageModel(NNModule):
         if self.max_relative_positions < 1:
             self.max_relative_positions = config.max_position_embeddings
         self.lm_predictions = EnhancedMaskDecoder(
-            self.deberta.config, self.deberta.embeddings.word_embeddings.weight.size(0)
+            self.deberta.config,
+            self.deberta.embeddings.word_embeddings.weight.size(0),
         )
         self.apply(self.init_weights)
 
@@ -130,7 +129,7 @@ class MaskedLanguageModel(NNModule):
         position_ids=None,
         attention_mask=None,
     ):
-        device = list(self.parameters())[0].device
+        device = next(iter(self.parameters())).device
         input_ids = input_ids.to(device)
         input_mask = input_mask.to(device)
         type_ids = None
@@ -152,12 +151,11 @@ class MaskedLanguageModel(NNModule):
         ctx_layer = encoder_layers[-1]
         lm_loss = torch.tensor(0).to(ctx_layer).float()
         lm_logits = None
-        label_inputs = None
         if lm_labels is not None:
             ebd_weight = self.deberta.embeddings.word_embeddings.weight
 
             label_index = (lm_labels.view(-1) > 0).nonzero()
-            label_inputs = torch.gather(input_ids.view(-1), 0, label_index.view(-1))
+            # torch.gather(input_ids.view(-1), 0, label_index.view(-1))
             if label_index.size(0) > 0:
                 (lm_logits, lm_labels, lm_loss) = self.lm_predictions(
                     encoder_layers,

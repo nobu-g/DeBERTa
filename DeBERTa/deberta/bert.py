@@ -96,7 +96,7 @@ class BertIntermediate(nn.Module):
 
 class BertOutput(nn.Module):
     def __init__(self, config):
-        super(BertOutput, self).__init__()
+        super().__init__()
         self.dense = nn.Linear(config.intermediate_size, config.hidden_size)
         self.LayerNorm = LayerNorm(config.hidden_size, config.layer_norm_eps)
         self.dropout = StableDropout(config.hidden_dropout_prob)
@@ -112,7 +112,7 @@ class BertOutput(nn.Module):
 
 class BertLayer(nn.Module):
     def __init__(self, config):
-        super(BertLayer, self).__init__()
+        super().__init__()
         self.attention = BertAttention(config)
         self.intermediate = BertIntermediate(config)
         self.output = BertOutput(config)
@@ -290,7 +290,7 @@ class BertEmbeddings(nn.Module):
     """Construct the embeddings from word, position and token_type embeddings."""
 
     def __init__(self, config):
-        super(BertEmbeddings, self).__init__()
+        super().__init__()
         padding_idx = getattr(config, "padding_idx", 0)
         self.embedding_size = getattr(config, "embedding_size", config.hidden_size)
         self.word_embeddings = nn.Embedding(config.vocab_size, self.embedding_size, padding_idx=padding_idx)
