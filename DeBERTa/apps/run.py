@@ -65,7 +65,7 @@ def create_model(args, num_labels, model_class_fn):
 
 def train_model(args, model, device, train_data: Dataset, eval_data, run_eval_fn, train_fn=None, loss_fn=None):
     total_examples = len(train_data)
-    num_train_steps = int(len(train_data) * args.num_train_epochs / args.train_batch_size)
+    num_train_steps = int(total_examples * args.num_train_epochs / args.train_batch_size)
     logger.info("  Training batch size = %d", args.train_batch_size)
     logger.info("  Num steps = %d", num_train_steps)
 
