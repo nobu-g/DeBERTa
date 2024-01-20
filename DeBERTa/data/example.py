@@ -1,8 +1,14 @@
 import pickle
+import random
 from collections import OrderedDict
+from types import ModuleType
+from typing import Optional, TYPE_CHECKING
 
 import numpy as np
 import torch
+
+if TYPE_CHECKING:
+    from ..apps.tasks.mlm_task import NGramMaskGenerator
 
 __all__ = ["ExampleInstance", "example_to_feature", "ExampleSet"]
 
@@ -46,7 +52,7 @@ class ExampleSet:
             yield self[i]
 
 
-def _truncate_segments(segments, max_num_tokens, rng):
+def _truncate_segments(segments: list[list], max_num_tokens: int, rng) -> list[list]:
     """Truncate sequence pair according to original BERT implementation:
     https://github.com/google-research/bert/blob/master/create_pretraining_data.py#L391
     """
@@ -70,8 +76,8 @@ def example_to_feature(
     tokenizer,
     example,
     max_seq_len=512,
-    rng=None,
-    mask_generator=None,
+    rng: Optional[ModuleType] = None,
+    mask_generator: Optional["NGramMaskGenerator"] = None,
     ext_params=None,
     label_type="int",
     **kwargs,
@@ -79,14 +85,15 @@ def example_to_feature(
     if not rng:
         rng = random
     max_num_tokens = max_seq_len - len(example.segments) - 1
-    segments = _truncate_segments([tokenizer.tokenize(s) for s in example.segments], max_num_tokens, rng)
+    segments: list[list[str]] = example.segments  # (1, tokens)
+    segments = _truncate_segments(segments, max_num_tokens, rng)
     tokens = ["[CLS]"]
     type_ids = [0]
-    for i, s in enumerate(segments):
-        tokens.extend(s)
+    for i, segment in enumerate(segments):
+        tokens.extend(segment)
         tokens.append("[SEP]")
-        type_ids.extend([i] * (len(s) + 1))
-    if mask_generator:
+        type_ids.extend([i] * (len(segment) + 1))
+    if mask_generator is not None:
         tokens, lm_labels = mask_generator.mask_tokens(tokens, rng)
     token_ids = tokenizer.convert_tokens_to_ids(tokens)
     pos_ids = list(range(len(token_ids)))
@@ -97,7 +104,7 @@ def example_to_feature(
         position_ids=pos_ids,
         input_mask=input_mask,
     )
-    if mask_generator:
+    if mask_generator is not None:
         features["lm_labels"] = lm_labels
     padding_size = max(0, max_seq_len - len(token_ids))
     for f in features:
