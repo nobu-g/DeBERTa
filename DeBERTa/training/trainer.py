@@ -14,6 +14,7 @@ from collections import OrderedDict, defaultdict
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
+from wandb.sdk.wandb_run import Run
 
 from ..data import AsyncDataLoader, BatchSampler, DistributedBatchSampler, RandomSampler
 from ..utils import get_logger
@@ -91,6 +92,7 @@ class DistributedTrainer:
         output_dir,
         model,
         device,
+        wandb_run,
         data_fn,
         loss_fn=None,
         optimizer_fn=None,
@@ -151,6 +153,7 @@ class DistributedTrainer:
 
         self.initialized = False
         self.update_fn = update_fn
+        self.wandb_run: Run = wandb_run
 
     def initialize(self):
         set_random_seed(self.args.seed)
@@ -215,6 +218,12 @@ class DistributedTrainer:
                 self.device,
                 tag=f"{self.trainer_state.steps:06}-{self.training_steps}",
             )
+            self.wandb_run.log(
+                {
+                    "Eval metric": metric,
+                    f"Eval gloabl step [{self.trainer_state.name}]": self.trainer_state.steps,
+                }
+            )
             if metric > _metric:
                 _metric = metric
                 _steps = self.trainer_state.steps
@@ -267,6 +276,14 @@ class DistributedTrainer:
                 continue
             go_next = True
         self.trainer_state.update_step(step_loss, batch_size, loss_scale)
+        self.wandb_run.log(
+            {
+                f"Step loss [{self.trainer_state.name}]": step_loss,
+                f"Batch size [{self.trainer_state.name}]": batch_size,
+                f"Learning rate [{self.trainer_state.name}]": loss_scale,
+                f"Gloabl step [{self.trainer_state.name}]": self.trainer_state.steps,
+            },
+        )
         if self.update_fn is not None:
             self.update_fn(self, self.model, loss_scale)
         self.optimizer.zero_grad()
