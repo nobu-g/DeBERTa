@@ -4,11 +4,12 @@ import os
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Iterator, Literal
+from typing import Any
 
 import sentencepiece as spm
 from datasets import Dataset, disable_caching
 from tqdm import tqdm
+from utils import list_input_files
 
 logger = logging.getLogger(__name__)
 disable_caching()
@@ -33,15 +34,6 @@ def save_dataset(dataset: Dataset, output_file: Path, overwrite: bool, format: s
     else:
         assert format == "parquet"
         dataset.to_parquet(output_file)
-
-
-def list_input_files(input_paths: list[str], input_format: Literal["parquet", "jsonl"] = "parquet") -> Iterator[Path]:
-    for path_str in input_paths:
-        path = Path(path_str)
-        if path.exists() is False:
-            logger.warning(f"{path} not found and skipped")
-            continue
-        yield from path.glob(f"*.{input_format}") if path.is_dir() else [path]
 
 
 def process_file(
@@ -89,7 +81,7 @@ def process_file(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input-dir", required=True, help="The input data path")
+    parser.add_argument("--input-path", "-i", type=str, nargs="+", help="Path(s) to the input data directory or file.")
     parser.add_argument(
         "--input-format",
         type=str,
@@ -129,9 +121,7 @@ def main() -> None:
     global sentence_piece_processor
     sentence_piece_processor = spm.SentencePieceProcessor(args.sentencepiece_model)
 
-    input_files: list[Path] = sorted(list_input_files([args.input_dir], args.input_format))
-    if not input_files:
-        return
+    input_files: list[Path] = sorted(list_input_files(args.input_path, args.input_format))
 
     logger.info("Loading the dataset")
     for input_file in tqdm(input_files):
@@ -142,6 +132,9 @@ def main() -> None:
             assert args.input_format == "parquet"
             dataset = Dataset.from_parquet(str(input_file), keep_in_memory=True)
         output_file: Path = output_dir / f"{input_file.stem}.{args.output_format}"
+        if output_file.exists() and not args.overwrite:
+            logger.error(f"{output_file} already exists. Specify --overwrite to overwrite.")
+            continue
         process_file(
             dataset,
             output_file,
