@@ -58,7 +58,7 @@ def adamw(
     if weight_decay > 0:
         update.add_(data, alpha=weight_decay)
 
-    data.add_(-lr, update)
+    data.add_(update, alpha=-lr)
     if (out_data is not None) and len(out_data) > 0:
         out_data.copy_(data)
 
@@ -165,12 +165,13 @@ class XAdam(Optimizer):
 
         return lr_sch
 
-    def get_group_lr_sch(self, group, steps):
+    def get_group_lr_sch(self, group, steps) -> float:
+        """Returns the learning rate scheduling factor."""
         if group["t_total"] > 0:
             schedule_fct = SCHEDULES[group["schedule"]]
             lr_scheduled = schedule_fct(steps, group["t_total"], group["warmup"], group["lr_ends"])
         else:
-            lr_scheduled = 1
+            lr_scheduled = 1.0
         return lr_scheduled
 
     def update_param(self, group, param, grad_scale, lr_scale):
