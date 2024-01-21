@@ -125,16 +125,16 @@ def main() -> None:
 
     logger.info("Loading the dataset")
     for input_file in tqdm(input_files):
+        output_file: Path = output_dir / f"{input_file.stem}.{args.output_format}"
+        if output_file.exists() and not args.overwrite:
+            logger.error(f"{output_file} already exists. Specify --overwrite to overwrite.")
+            continue
         logger.info(f"Loading dataset from {input_file}.")
         if args.input_format == "jsonl":
             dataset = Dataset.from_json(str(input_file), keep_in_memory=True)
         else:
             assert args.input_format == "parquet"
             dataset = Dataset.from_parquet(str(input_file), keep_in_memory=True)
-        output_file: Path = output_dir / f"{input_file.stem}.{args.output_format}"
-        if output_file.exists() and not args.overwrite:
-            logger.error(f"{output_file} already exists. Specify --overwrite to overwrite.")
-            continue
         process_file(
             dataset,
             output_file,
