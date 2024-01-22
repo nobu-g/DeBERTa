@@ -416,7 +416,6 @@ def main(args):
             fs.write(model.config.to_json_string() + "\n")
         shutil.copy(vocab_path, args.output_dir)
     logger.info(f"Model config {model.config}")
-    wandb_run = wandb.init()
     device = initialize_distributed(args)
     if not isinstance(device, torch.device):
         return 0
@@ -430,6 +429,10 @@ def main(args):
         run_eval(args, model, device, eval_data, prefix=args.tag)
 
     if args.do_train:
+        if args.local_rank == 0:
+            wandb_run = wandb.init()
+        else:
+            wandb_run = None
         train_fn = task.get_train_fn(args, model, wandb_run)
         train_model(
             args,

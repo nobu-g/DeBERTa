@@ -10,12 +10,14 @@ import os
 import random
 import time
 from collections import OrderedDict, defaultdict
+from typing import Optional
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 from wandb.sdk.wandb_run import Run
 
+# from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
 from ..data import AsyncDataLoader, BatchSampler, DistributedBatchSampler, RandomSampler
 from ..utils import get_logger
 from ._utils import batch_to
@@ -135,6 +137,7 @@ class DistributedTrainer:
         self.dump_interval = dump_interval
 
         self.model = self._setup_model(args, model)
+        # self.model = FSDP(self.model)
         self.post_loss_fn = None
 
         def _opt_fn(trainer, model, training_steps):
@@ -153,7 +156,7 @@ class DistributedTrainer:
 
         self.initialized = False
         self.update_fn = update_fn
-        self.wandb_run: Run = wandb_run
+        self.wandb_run: Optional[Run] = wandb_run
 
     def initialize(self):
         set_random_seed(self.args.seed)
@@ -218,12 +221,13 @@ class DistributedTrainer:
                 self.device,
                 tag=f"{self.trainer_state.steps:06}-{self.training_steps}",
             )
-            self.wandb_run.log(
-                {
-                    "Eval metric": metric,
-                    f"Eval gloabl step [{self.trainer_state.name}]": self.trainer_state.steps,
-                }
-            )
+            if self.wandb_run is not None:
+                self.wandb_run.log(
+                    {
+                        "Eval metric": metric,
+                        f"Eval gloabl step [{self.trainer_state.name}]": self.trainer_state.steps,
+                    }
+                )
             if metric > _metric:
                 _metric = metric
                 _steps = self.trainer_state.steps
@@ -276,14 +280,15 @@ class DistributedTrainer:
                 continue
             go_next = True
         self.trainer_state.update_step(step_loss, batch_size, loss_scale)
-        self.wandb_run.log(
-            {
-                f"Step loss [{self.trainer_state.name}]": step_loss,
-                f"Batch size [{self.trainer_state.name}]": batch_size,
-                f"Learning rate [{self.trainer_state.name}]": loss_scale,
-                f"Gloabl step [{self.trainer_state.name}]": self.trainer_state.steps,
-            },
-        )
+        if self.wandb_run is not None:
+            self.wandb_run.log(
+                {
+                    f"Step loss [{self.trainer_state.name}]": step_loss,
+                    f"Batch size [{self.trainer_state.name}]": batch_size,
+                    f"Learning rate [{self.trainer_state.name}]": loss_scale,
+                    f"Gloabl step [{self.trainer_state.name}]": self.trainer_state.steps,
+                },
+            )
         if self.update_fn is not None:
             self.update_fn(self, self.model, loss_scale)
         self.optimizer.zero_grad()
@@ -301,4 +306,5 @@ class DistributedTrainer:
             for p in model.parameters():
                 torch.distributed.broadcast(p.data, 0)
             torch.cuda.synchronize()
+        # model = torch.compile(model)
         return model
