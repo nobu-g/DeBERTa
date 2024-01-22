@@ -37,24 +37,24 @@ class BatchSampler(Sampler):
 
 
 class DistributedBatchSampler(Sampler):
-    def __init__(self, sampler, rank=0, world_size=1, drop_last=False):
-        self.sampler = sampler
+    def __init__(self, batch_sampler, rank=0, world_size=1, drop_last=False):
+        self.batch_sampler = batch_sampler
         self.rank = rank
         self.world_size = world_size
         self.drop_last = drop_last
 
     def __iter__(self):
-        for b in self.sampler:
-            if len(b) % self.world_size != 0:
+        for batch in self.batch_sampler:
+            if len(batch) % self.world_size != 0:
                 if self.drop_last:
                     break
                 else:
-                    b.extend([b[0] for _ in range(self.world_size - len(b) % self.world_size)])
-            chunk_size = len(b) // self.world_size
-            yield b[self.rank * chunk_size : (self.rank + 1) * chunk_size]
+                    batch.extend([batch[0] for _ in range(self.world_size - len(batch) % self.world_size)])
+            chunk_size = len(batch) // self.world_size  # 40 = 320 // 8
+            yield batch[self.rank * chunk_size : (self.rank + 1) * chunk_size]  # batch[0:40], batch[40:80], ...
 
     def __len__(self):
-        return len(self.sampler)
+        return len(self.batch_sampler)
 
 
 class RandomSampler(Sampler):
