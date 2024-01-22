@@ -6,29 +6,33 @@ SCRIPT=$(readlink -f "$0")
 SCRIPT_DIR=$(dirname "$SCRIPT")
 cd $SCRIPT_DIR
 
-cache_dir=/tmp/DeBERTa/RTD/
+# cache_dir=/tmp/DeBERTa/RTD/
+
+# max_seq_length=512
+# data_dir=$cache_dir/wiki103/spm_$max_seq_length
+
+# setup_wiki_data() {
+#   task=$1
+#   mkdir -p $cache_dir
+#   if [[ ! -e $cache_dir/spm.model ]]; then
+#     wget -q https://huggingface.co/microsoft/deberta-v3-base/resolve/main/spm.model -O $cache_dir/spm.model
+#   fi
+
+#   if [[ ! -e $data_dir/test.txt ]]; then
+#     wget -q https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-103-v1.zip -O $cache_dir/wiki103.zip
+#     unzip -j $cache_dir/wiki103.zip -d $cache_dir/wiki103
+#     mkdir -p $data_dir
+#     python ./prepare_data.py -i $cache_dir/wiki103/wiki.train.tokens -o $data_dir/train.txt --max_seq_length $max_seq_length
+#     python ./prepare_data.py -i $cache_dir/wiki103/wiki.valid.tokens -o $data_dir/valid.txt --max_seq_length $max_seq_length
+#     python ./prepare_data.py -i $cache_dir/wiki103/wiki.test.tokens -o $data_dir/test.txt --max_seq_length $max_seq_length
+#   fi
+# }
+
+# setup_wiki_data
 
 max_seq_length=512
-data_dir=$cache_dir/wiki103/spm_$max_seq_length
-
-setup_wiki_data() {
-  task=$1
-  mkdir -p $cache_dir
-  if [[ ! -e $cache_dir/spm.model ]]; then
-    wget -q https://huggingface.co/microsoft/deberta-v3-base/resolve/main/spm.model -O $cache_dir/spm.model
-  fi
-
-  if [[ ! -e $data_dir/test.txt ]]; then
-    wget -q https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-103-v1.zip -O $cache_dir/wiki103.zip
-    unzip -j $cache_dir/wiki103.zip -d $cache_dir/wiki103
-    mkdir -p $data_dir
-    python ./prepare_data.py -i $cache_dir/wiki103/wiki.train.tokens -o $data_dir/train.txt --max_seq_length $max_seq_length
-    python ./prepare_data.py -i $cache_dir/wiki103/wiki.valid.tokens -o $data_dir/valid.txt --max_seq_length $max_seq_length
-    python ./prepare_data.py -i $cache_dir/wiki103/wiki.test.tokens -o $data_dir/test.txt --max_seq_length $max_seq_length
-  fi
-}
-
-setup_wiki_data
+data_dir=${HOME}/work/DeBERTa/data
+output_dir=${HOME}/work/DeBERTa/output
 
 task=RTD
 
@@ -77,7 +81,7 @@ deberta-v3-base)
 	--model_config rtd_base.json \
 	--warmup 10000 \
 	--learning_rate 1e-4 \
-	--train_batch_size 256 \
+	--train_batch_size 320 \
 	--decoupled_training True \
 	--fp16 True "
   ;;
@@ -101,13 +105,14 @@ deberta-v3-large)
 esac
 
 python -m DeBERTa.apps.run --model_config config.json \
-  --tag $tag \
+  --tag "${tag}" \
   --do_train \
   --num_training_steps 1000000 \
   --max_seq_len $max_seq_length \
   --dump 10000 \
   --task_name "${task}" \
-  --data_dir $data_dir \
-  --vocab_path $cache_dir/spm.model \
+  --data_dir "${data_dir}/full" \
+  --vocab_path "${data_dir}/spm/code20K_en40K_ja60K.ver2.2.model" \
   --vocab_type spm \
-  --output_dir /tmp/ttonly/$tag/$task $parameters
+  --world_size 1 \
+  --output_dir "${output_dir}/${tag}/${task}" ${parameters}
