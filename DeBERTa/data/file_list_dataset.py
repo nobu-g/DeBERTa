@@ -23,7 +23,7 @@ logger = get_logger()
 __all__ = ["FileListDataset"]
 
 CORPUS_TO_NUM_EXAMPLES: dict[str, int] = {
-    "ja_wiki": 2_850_903,  # 2_850_903
+    "ja_wiki": 2_848_756,
     "ja_cc": 1_000_000_000,
     "en_wiki": 11_101_940,
     "en_pile": 0,
@@ -52,7 +52,9 @@ class FileListDataset(TorchDataset):
         n_buff_files = 10
         datasets = []
         for _ in range(n_buff_files):
-            datasets.append(self._load_file(self.data_files[self.data_file_index % self.num_data_files]))
+            data_file = self.data_files[self.data_file_index % self.num_data_files]
+            datasets.append(self._load_file(data_file))
+            logger.info(f"Loaded {data_file}")
             self.data_file_index += 1
         return concatenate_datasets(datasets)
 
