@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader, Dataset
 from wandb.sdk.wandb_run import Run
 
 # from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
-from ..data import AsyncDataLoader, BatchSampler, DistributedBatchSampler, RandomSampler
+from ..data import AsyncDataLoader, RandomSampler
 from ..utils import get_logger
 from ._utils import batch_to
 from .dist_launcher import get_ngpu
@@ -172,13 +172,16 @@ class DistributedTrainer:
         rank = self.args.rank
         world_size = self.args.world_size
         for _n_epoch in range(self.trainer_state.epochs, self.training_epochs):
-            batch_sampler = BatchSampler(self.train_sampler, self.args.train_batch_size)
-            batch_sampler = DistributedBatchSampler(batch_sampler, rank=rank, world_size=world_size)
-            batch_sampler.next = self.trainer_state.next_batch
+            # batch_sampler = BatchSampler(self.train_sampler, self.args.train_batch_size)
+            # batch_sampler = DistributedBatchSampler(batch_sampler, rank=rank, world_size=world_size)
+            # batch_sampler.next = self.trainer_state.next_batch
             num_workers = getattr(self.args, "workers", 2)
             train_dataloader = DataLoader(
                 self.train_data,
-                batch_sampler=batch_sampler,
+                batch_size=self.args.train_batch_size // world_size,
+                # 各ファイルの内容はシャッフル済みで，ファイルリストも FileListDataset 内部でシャッフル済みのため，ここでシャッフルは不要
+                shuffle=False,
+                # batch_sampler=batch_sampler,
                 num_workers=num_workers,
                 worker_init_fn=self.init_fn,
                 pin_memory=False,

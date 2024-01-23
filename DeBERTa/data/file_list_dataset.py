@@ -7,14 +7,13 @@
 # Date: 05/15/2019
 #
 
-import json
 import random
 from pathlib import Path
 from typing import Callable
 
-import datasets
 import numpy as np
-from torch.utils.data import Dataset
+from datasets import Dataset, concatenate_datasets
+from torch.utils.data import Dataset as TorchDataset
 
 from ..data import ExampleInstance
 from ..utils import get_logger
@@ -32,48 +31,43 @@ CORPUS_TO_NUM_EXAMPLES: dict[str, int] = {
 }
 
 
-class FileListDataset(Dataset):
-    NUM_EXAMPLES_PER_FILE = 100_000
-
+class FileListDataset(TorchDataset):
     def __init__(self, data_dir: Path, glob_pat: str, feature_fn: Callable, shuffle: bool = False):
         self.data_files = sorted(list(data_dir.glob(glob_pat)))
         self.num_data_files = len(self.data_files)
         self.feature_fn: Callable = feature_fn
 
-        self.dataset_size = sum(CORPUS_TO_NUM_EXAMPLES.values())
-        logger.info(f"Total estimated corpus examples: {self.dataset_size}")
+        self.dataset_size: int = sum(CORPUS_TO_NUM_EXAMPLES.values())
+        logger.info(f"Total corpus examples: {self.dataset_size}")
 
         self.shuffle: bool = shuffle
+        self.rng = random.Random(0)
         if self.shuffle:
-            rng = random.Random(0)
-            rng.shuffle(self.data_files)
-        self.buff: list[list[str]] = []
+            self.rng.shuffle(self.data_files)
         self.data_file_index = 0
-        self._load_files()
+        self.buff: Dataset = self._load_files()
+        self.offset: int = 0
 
-    def _load_files(self) -> None:
-        buff_files = 5
-        for _ in range(buff_files):
-            self.buff += self._load_file(self.data_files[self.data_file_index % self.num_data_files])
+    def _load_files(self) -> Dataset:
+        n_buff_files = 10
+        datasets = []
+        for _ in range(n_buff_files):
+            datasets.append(self._load_file(self.data_files[self.data_file_index % self.num_data_files]))
             self.data_file_index += 1
+        return concatenate_datasets(datasets)
 
-    def _load_file(self, file_path: Path) -> list[list[str]]:
-        if file_path.suffix == ".parquet":
-            dataset: datasets.Dataset = datasets.Dataset.from_parquet(str(file_path), keep_in_memory=True)
-            return dataset["tokens"]
-        else:
-            assert file_path.suffix == ".jsonl"
-            return [json.loads(line)["tokens"] for line in file_path.read_text().splitlines()]
+    def _load_file(self, file_path: Path) -> Dataset:
+        assert file_path.suffix == ".parquet"
+        return Dataset.from_parquet(str(file_path))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.dataset_size
 
     def __getitem__(self, index: int | np.ndarray):
         index = int(index)
-        rng = random.Random(index)
         buff_size = len(self.buff)
-        if buff_size == 0:
-            self._load_files()
-            buff_size = len(self.buff)
-        example = ExampleInstance(segments=[self.buff.pop(index % buff_size)])
-        return self.feature_fn(example, rng, ext_params=None)
+        if index - self.offset >= buff_size:
+            self.offset += buff_size
+            self.buff = self._load_files()
+        example = ExampleInstance(segments=[self.buff[index - self.offset]["tokens"]])
+        return self.feature_fn(example, self.rng, ext_params=None)
