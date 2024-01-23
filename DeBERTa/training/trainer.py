@@ -281,11 +281,15 @@ class DistributedTrainer:
             go_next = True
         self.trainer_state.update_step(step_loss, batch_size, loss_scale)
         if self.wandb_run is not None:
+            optim = self.optimizer.optimizer
             self.wandb_run.log(
                 {
                     f"Step loss [{self.trainer_state.name}]": step_loss,
                     f"Batch size [{self.trainer_state.name}]": batch_size,
-                    f"Learning rate [{self.trainer_state.name}]": loss_scale,
+                    f"Learning rate [{self.trainer_state.name}]": optim.get_group_lr_sch(
+                        optim.param_groups[0],
+                        optim.state["global_step"],
+                    ),
                     f"Gloabl step [{self.trainer_state.name}]": self.trainer_state.steps,
                 },
             )
