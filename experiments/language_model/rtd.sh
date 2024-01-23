@@ -43,56 +43,65 @@ deberta-v3-xsmall-continue)
   # wget https://huggingface.co/microsoft/deberta-v3-xsmall/resolve/main/pytorch_model.generator.bin
   # wget https://huggingface.co/microsoft/deberta-v3-xsmall/resolve/main/pytorch_model.bin
   parameters=" --num_train_epochs 1 \
-	--model_config rtd_xsmall.json \
-	--warmup 10000 \
-	--num_training_steps 100000 \
-	--learning_rate 5e-5 \
-	--train_batch_size 256 \
-	--init_generator <TODO: generator checkpoint> \
-	--init_discriminator <TODO: discriminator checkpoint> \
-	--decoupled_training True \
-	--fp16 True "
+  --model_config rtd_xsmall.json \
+  --warmup 10000 \
+  --num_training_steps 100000 \
+  --learning_rate 5e-5 \
+  --train_batch_size 256 \
+  --init_generator <TODO: generator checkpoint> \
+  --init_discriminator <TODO: discriminator checkpoint> \
+  --decoupled_training True \
+  --fp16 True "
   ;;
 deberta-v3-xsmall)
   parameters=" --num_train_epochs 1 \
-	--model_config rtd_xsmall.json \
-	--warmup 10000 \
-	--learning_rate 3e-4 \
-	--train_batch_size 64 \
-	--decoupled_training True \
-	--fp16 True "
+  --model_config rtd_xsmall.json \
+  --warmup 10000 \
+  --learning_rate 3e-4 \
+  --epsilon 1e-6 \
+  --adam_beta1 0.9 \
+  --adam_beta2 0.98 \
+  --train_batch_size 64 \
+  --decoupled_training True \
+  --fp16 True "
   ;;
 deberta-v3-small-continue)
   # wget https://huggingface.co/microsoft/deberta-v3-small/resolve/main/pytorch_model.generator.bin
   # wget https://huggingface.co/microsoft/deberta-v3-small/resolve/main/pytorch_model.bin
   parameters=" --num_train_epochs 1 \
-	--model_config rtd_small.json \
-	--warmup 10000 \
-	--num_training_steps 100000 \
-	--learning_rate 5e-5 \
-	--train_batch_size 256 \
-	--init_generator <TODO: generator checkpoint> \
-	--init_discriminator <TODO: discriminator checkpoint> \
-	--decoupled_training True \
-	--fp16 True "
+  --model_config rtd_small.json \
+  --warmup 10000 \
+  --num_training_steps 100000 \
+  --learning_rate 5e-5 \
+  --train_batch_size 256 \
+  --init_generator <TODO: generator checkpoint> \
+  --init_discriminator <TODO: discriminator checkpoint> \
+  --decoupled_training True \
+  --fp16 True "
   ;;
 deberta-v3-base)
   parameters=" --num_train_epochs 1 \
-	--model_config rtd_base.json \
-	--warmup 10000 \
-	--learning_rate 1e-4 \
-	--train_batch_size 320 \
-	--decoupled_training True \
-	--fp16 True "
+  --model_config rtd_base.json \
+  --warmup 10000 \
+  --learning_rate 5e-4 \
+  --epsilon 1e-6 \
+  --adam_beta1 0.9 \
+  --adam_beta2 0.98 \
+  --train_batch_size 768 \
+  --decoupled_training True \
+  --fp16 True "
   ;;
 deberta-v3-large)
   parameters=" --num_train_epochs 1 \
-	--model_config rtd_large.json \
-	--warmup 10000 \
-	--learning_rate 1e-4 \
-	--train_batch_size 256 \
-	--decoupled_training True \
-	--fp16 True "
+  --model_config rtd_large.json \
+  --warmup 10000 \
+  --learning_rate 1e-4 \
+  --epsilon 1e-6 \
+  --adam_beta1 0.9 \
+  --adam_beta2 0.98 \
+  --train_batch_size 256 \
+  --decoupled_training True \
+  --fp16 True "
   ;;
 *)
   echo "usage $0 <Pretrained model configuration>"
