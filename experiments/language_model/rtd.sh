@@ -87,7 +87,7 @@ deberta-v3-base)
   --epsilon 1e-6 \
   --adam_beta1 0.9 \
   --adam_beta2 0.98 \
-  --train_batch_size 768 \
+  --train_batch_size 800 \
   --decoupled_training True \
   --fp16 True "
   ;;
