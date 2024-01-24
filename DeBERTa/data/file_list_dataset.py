@@ -56,7 +56,7 @@ class FileListDataset(TorchDataset):
             datasets.append(self._load_file(data_file))
             logger.info(f"Loaded {data_file}")
             self.data_file_index += 1
-        return concatenate_datasets(datasets)
+        return concatenate_datasets(datasets).shuffle(seed=0)
 
     def _load_file(self, file_path: Path) -> Dataset:
         assert file_path.suffix == ".parquet"
