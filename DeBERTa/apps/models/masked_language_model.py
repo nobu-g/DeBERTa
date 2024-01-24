@@ -45,8 +45,8 @@ class EnhancedMaskDecoder(torch.nn.Module):
         loss_fct = torch.nn.CrossEntropyLoss(reduction="none")
         # lm_loss = torch.tensor(0).to(ctx_layers[-1])
         ctx_layer = mlm_ctx_layers[-1]
-        lm_logits = self.lm_head(ctx_layer, ebd_weight).float()
-        lm_logits = lm_logits.view(-1, lm_logits.size(-1))
+        lm_logits = self.lm_head(ctx_layer, ebd_weight).float()  # (b, seq, vocab)
+        lm_logits = lm_logits.view(-1, lm_logits.size(-1))  # (b*seq, vocab)
         lm_labels = target_ids.view(-1)
         label_index = (target_ids.view(-1) > 0).nonzero().view(-1)
         lm_labels = lm_labels.index_select(0, label_index)
