@@ -27,7 +27,7 @@ spacy = "^3.7"
 nltk = "^3.8"
 requests = "^2.31.0"
 datasets = "^2.16.1"
-wandb = "^0.15.12"
+wandb = "^0.16.2"
 fairscale = "^0.4.13"
 
 [tool.poetry.group.dev.dependencies]
