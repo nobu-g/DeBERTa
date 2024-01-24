@@ -4,13 +4,13 @@
 
 Tokenized by `code20K_en40K_ja60K.ver2.2.model`.
 
-| Corpus     | Train             | Validation | Total          |
-| ---------- | ----------------- | ---------- | -------------- |
-| ja_wiki    | 1,288,129,680     | 942,317    | 1,289,071,997  |
-| ja_cc      | Data              | Data       | Data           |
-| en_wiki    | 4,266,745,171     | 845,035    | 4,267,590,206  |
-| en_pile    | Data              | Data       | Data     |
-| code_stack | Data              | Data       | Data     |
+| Corpus     | Train            | Validation  | Total           |
+| ---------- | ---------------- | ----------- | --------------- |
+| ja_wiki    |    1,288,129,680 |     942,317 |   1,289,071,997 |
+| ja_cc      |  129,053,916,369 | 129,968,005 | 129,183,884,374 |
+| en_wiki    |    4,266,745,171 |     845,035 |   4,267,590,206 |
+| en_pile    | ~142,360,033,896 |  33,126,219 |            Data |
+| code_stack |  111,850,184,288 |  72,061,208 | 111,922,245,496 |
 
 ## Examples
 
@@ -18,8 +18,8 @@ Chunked with 510 tokens.
 
 | Corpus     | Train         | Validation | Total        |
 | ---------- | ------------- | ---------- | ------------ |
-| ja_wiki    | 2,848,756     | 2,147      | 2,850,903    |
-| ja_cc      | Data          | Data       | Data         |
-| en_wiki    | 11,101,940    | 2,291      | 11,104,231   |
-| en_pile    | Data          | Data       | Data         |
-| code_stack | Data          | Data       | Data         |
+| ja_wiki    |     2,848,756 |      2,147 |    2,850,903 |
+| ja_cc      |   267,019,300 |    268,864 |  267,288,164 |
+| en_wiki    |    11,101,940 |      2,291 |   11,104,231 |
+| en_pile    |  ~303,246,270 |     70,256 |         Data |
+| code_stack |   225,332,863 |    145,014 |  225,477,877 |
