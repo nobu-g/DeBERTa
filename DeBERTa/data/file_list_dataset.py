@@ -24,10 +24,10 @@ __all__ = ["FileListDataset"]
 
 CORPUS_TO_NUM_EXAMPLES: dict[str, int] = {
     "ja_wiki": 2_848_756,
-    "ja_cc": 1_000_000_000,
+    "ja_cc": 267_019_300,
     "en_wiki": 11_101_940,
-    "en_pile": 0,
-    "code_stack": 1_553_108,
+    "en_pile": 303_448_037,
+    "code_stack": 20_907_722,
 }
 
 
