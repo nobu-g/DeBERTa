@@ -224,7 +224,7 @@ class DistributedTrainer:
                 self.device,
                 tag=f"{self.trainer_state.steps:06}-{self.training_steps}",
             )
-            if self.wandb_run is not None:
+            if self.wandb_run is not None and metric > 0:
                 self.wandb_run.log(
                     {
                         "Eval metric": metric,
