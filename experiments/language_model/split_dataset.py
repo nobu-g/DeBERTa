@@ -10,14 +10,14 @@ logger = logging.getLogger(__name__)
 disable_caching()
 
 
-def save_dataset(dataset: Dataset, output_file: Path, overwrite: bool, format: str) -> None:
+def save_dataset(dataset: Dataset, output_file: Path, overwrite: bool, format_: str) -> None:
     if output_file.exists() and not overwrite:
         logger.error(f"{output_file} already exists. Specify --overwrite to overwrite.")
         return
-    if format == "jsonl":
+    if format_ == "jsonl":
         dataset.to_json(output_file, force_ascii=False)
     else:
-        assert format == "parquet"
+        assert format_ == "parquet"
         dataset.to_parquet(output_file)
 
 
@@ -78,7 +78,7 @@ def main() -> None:
                 continue
             split_dataset = Dataset.from_dict(dataset[i : i + 50_000])
             logger.info(f"Writing the split dataset to {output_file}.")
-            save_dataset(split_dataset, output_file, overwrite=args.overwrite, format=args.output_format)
+            save_dataset(split_dataset, output_file, overwrite=args.overwrite, format_=args.output_format)
             logger.info(f"Finished writing to {output_file}.")
 
 
