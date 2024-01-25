@@ -41,7 +41,7 @@ def main() -> None:
     parser.add_argument(
         "--output-format",
         type=str,
-        default="jsonl",
+        default="parquet",
         choices=["jsonl", "parquet"],
         help="Output format.",
     )
