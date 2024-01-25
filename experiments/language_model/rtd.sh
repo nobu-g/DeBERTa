@@ -83,11 +83,12 @@ deberta-v3-base)
   parameters=" --num_train_epochs 1 \
   --model_config rtd_base.json \
   --warmup 10000 \
-  --learning_rate 5e-4 \
+  --learning_rate 6e-4 \
   --epsilon 1e-6 \
   --adam_beta1 0.9 \
   --adam_beta2 0.98 \
   --train_batch_size 800 \
+  --eval_batch_size 64 \
   --decoupled_training True \
   --fp16 True "
   ;;
@@ -116,12 +117,12 @@ esac
 python -m DeBERTa.apps.run --model_config config.json \
   --tag "${tag}" \
   --do_train \
-  --num_training_steps 1000000 \
   --max_seq_len $max_seq_length \
-  --dump 10000 \
+  --dump 5000 \
   --task_name "${task}" \
   --data_dir "${data_dir}/full" \
   --vocab_path "${data_dir}/spm/code20K_en40K_ja60K.ver2.2.model" \
   --vocab_type spm \
   --world_size 1 \
+  --workers 2 \
   --output_dir "${output_dir}/${tag}/${task}" ${parameters}
