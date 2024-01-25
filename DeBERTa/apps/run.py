@@ -429,8 +429,8 @@ def main(args):
         run_eval(args, model, device, eval_data, prefix=args.tag)
 
     if args.do_train:
-        if args.local_rank == 0:
-            wandb_run = wandb.init()
+        if args.rank == 0:
+            wandb_run = wandb.init(name=args.tag)
         else:
             wandb_run = None
         train_fn = task.get_train_fn(args, model, wandb_run)
