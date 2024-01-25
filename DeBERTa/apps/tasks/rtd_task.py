@@ -48,11 +48,9 @@ __all__ = ["RTDTask"]
 class RTDModel(NNModule):
     def __init__(self, config, *args, **kwargs):
         super().__init__(config)
-        gen_config = config.generator
-        disc_config = config.discriminator
         self.config = config
-        self.generator = MaskedLanguageModel(gen_config)
-        self.discriminator = ReplacedTokenDetectionModel(disc_config)
+        self.generator = MaskedLanguageModel(config.generator)
+        self.discriminator = ReplacedTokenDetectionModel(config.discriminator)
 
         self.generator._register_load_state_dict_pre_hook(self._pre_load_hook)
         self.discriminator._register_load_state_dict_pre_hook(self._pre_load_hook)
@@ -317,7 +315,7 @@ class RTDTask(Task):
                 with open(os.path.join(gen_args.checkpoint_dir, "model_config.json"), "w") as fs:
                     fs.write(model.config.generator.to_json_string() + "\n")
                 shutil.copy(args.vocab_path, gen_args.checkpoint_dir)
-                loss_fn = self.get_decoupled_loss_fn(args, model, data_fn, device, args.num_training_steps, wandb_run)
+                loss_fn = self.get_decoupled_loss_fn(args, model, data_fn, device, wandb_run)
                 trainer = DistributedTrainer(
                     gen_args,
                     gen_args.output_dir,
@@ -377,10 +375,10 @@ class RTDTask(Task):
                     batch = batch_to(batch, device)
                     with torch.no_grad():
                         output = model(**batch)
-                    logits = output["logits"].detach().argmax(dim=-1)
+                    logits = output["logits"].detach().argmax(dim=-1)  # (154, vocab) -> (154)
                     tmp_eval_loss = output["loss"].detach()
                     if "labels" in output:
-                        label_ids = output["labels"].detach().to(device)
+                        label_ids = output["labels"].detach().to(device)  # (154)
                     else:
                         label_ids = batch["labels"].to(device)
                     predicts.append(logits)
@@ -418,7 +416,7 @@ class RTDTask(Task):
 
         return eval_fn
 
-    def get_decoupled_loss_fn(self, args, model, data_fn, device, num_training_steps, wandb_run):
+    def get_decoupled_loss_fn(self, args, model, data_fn, device, wandb_run):
         rand = random.Random(0)
 
         def eval_fn(trainer, model, device, tag):
