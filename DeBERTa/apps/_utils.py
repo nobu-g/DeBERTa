@@ -1,22 +1,31 @@
 from collections.abc import Sequence
 
 import torch
+import torch.distributed as dist
 
 
 def merge_distributed(data_list, max_len=None):
-    if torch.distributed.is_initialized() and torch.distributed.get_world_size() > 1:
-        world_size = torch.distributed.get_world_size()
+    if dist.is_initialized() and dist.get_world_size() > 1:
+        world_size = dist.get_world_size()
+        # rank = dist.get_rank()
     else:
         world_size = 1
+        # rank = 0
+    # print(f"{rank = }, {world_size = }")
     merged = []
 
-    def gather(data):
-        data_size = [torch.zeros(data.dim(), dtype=torch.int).to(data.device) for _ in range(world_size)]
-        torch.distributed.all_gather(data_size, torch.tensor(data.size()).to(data_size[0]))
-        data_chunks = [torch.zeros(tuple(s.cpu().numpy())).to(data) for s in data_size]
-        data_chunks[data.device.index] = data
-        for i, _chunk in enumerate(data_chunks):
-            torch.distributed.broadcast(_chunk, src=i)
+    def gather(data: torch.Tensor) -> list[torch.Tensor]:
+        # print(f"{rank = }, {data = }")
+        data_size = [torch.zeros(data.dim(), dtype=torch.long, device=data.device) for _ in range(world_size)]
+        # print(f"{rank = }, {data_size = }")
+        dist.all_gather(data_size, torch.tensor(data.size(), device=data.device))
+        # print(f"{rank = }, {data_size = }")
+        data_chunks = [torch.zeros(tuple(s.cpu().numpy()), dtype=data.dtype, device=data.device) for s in data_size]
+        # print(f"{rank = }, {data_chunks = }")
+        # data_chunks[data.device.index] = data
+        # print(f"{rank = }, {data_chunks = }")
+        dist.all_gather(data_chunks, data)
+        # print(f"{rank = }, broadcasting done")
         return data_chunks
 
     for data in data_list:
