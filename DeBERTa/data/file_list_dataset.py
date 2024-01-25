@@ -49,7 +49,7 @@ class FileListDataset(TorchDataset):
         self.offset: int = 0
 
     def _load_files(self) -> Dataset:
-        n_buff_files = 10
+        n_buff_files = 50
         datasets = []
         for _ in range(n_buff_files):
             data_file = self.data_files[self.data_file_index % self.num_data_files]
