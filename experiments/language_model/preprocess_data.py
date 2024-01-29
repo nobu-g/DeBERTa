@@ -85,7 +85,7 @@ def process_file(
     )
 
     logger.info(f"Writing the tokenized data to {output_file}.")
-    save_dataset(grouped_dataset.shuffle(seed=42), output_file, overwrite=overwrite, format=output_format)
+    save_dataset(grouped_dataset, output_file, overwrite=overwrite, format=output_format)
     logger.info(f"Finished writing the tokenized to {output_file}.")
 
 
