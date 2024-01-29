@@ -46,13 +46,23 @@ def process_file(
 ) -> None:
     logger.info("Tokenizing the dataset.")
     columns = list(input_dataset[0].keys())
-    tokenized_dataset = input_dataset.map(
-        tokenize_examples,
-        batched=True,
-        batch_size=128,
-        keep_in_memory=True,
-        num_proc=num_proc,
-    ).map(remove_columns=list(set(columns) - {"tokens", "token_ids"}))
+    if "pile_set_name" in input_dataset[0]["meta"]["meta"]:
+        filter_fn = lambda x: x["meta"]["meta"]["pile_set_name"] != "Books3"  # noqa: E731
+    elif "pile_set_name" in input_dataset[0]["meta"]:
+        filter_fn = lambda x: x["meta"]["pile_set_name"] != "Books3"  # noqa: E731
+    else:
+        filter_fn = lambda x: True  # noqa: E731
+    tokenized_dataset = (
+        input_dataset.filter(filter_fn, num_proc=num_proc)
+        .map(
+            tokenize_examples,
+            batched=True,
+            batch_size=128,
+            keep_in_memory=True,
+            num_proc=num_proc,
+        )
+        .map(remove_columns=list(set(columns) - {"tokens", "token_ids"}))
+    )
     logger.info("Finished tokenizing the dataset.")
 
     def group_texts(example: dict[str, list[list[int | str]]]) -> dict[str, list[list[int | str]]]:
