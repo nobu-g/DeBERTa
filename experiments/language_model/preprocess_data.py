@@ -1,8 +1,8 @@
 import argparse
 import logging
-import os
 import time
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +36,7 @@ def save_dataset(dataset: Dataset, output_file: Path, overwrite: bool, format: s
         dataset.to_parquet(output_file)
 
 
-def process_file(
+def process_dataset(
     input_dataset: Dataset,
     output_file: Path,
     overwrite: bool,
@@ -53,11 +53,11 @@ def process_file(
     else:
         filter_fn = lambda x: True  # noqa: E731
     tokenized_dataset = (
-        input_dataset.filter(filter_fn, num_proc=num_proc)
+        input_dataset.filter(filter_fn, num_proc=num_proc, keep_in_memory=True)
         .map(
             tokenize_examples,
             batched=True,
-            batch_size=128,
+            batch_size=1024,
             keep_in_memory=True,
             num_proc=num_proc,
         )
@@ -80,6 +80,7 @@ def process_file(
     grouped_dataset = tokenized_dataset.map(
         group_texts,
         batched=True,
+        batch_size=1024,
         num_proc=num_proc,
         desc=f"Grouping texts in chunks of {max_seq_length}",
     )
@@ -87,6 +88,30 @@ def process_file(
     logger.info(f"Writing the tokenized data to {output_file}.")
     save_dataset(grouped_dataset, output_file, overwrite=overwrite, format=output_format)
     logger.info(f"Finished writing the tokenized to {output_file}.")
+
+
+def process_file(
+    input_file: Path, input_format: str, output_dir: Path, output_format: str, overwrite: bool, max_seq_length: int
+) -> None:
+    logger.info("Loading the dataset")
+    output_file: Path = output_dir / f"{input_file.stem}.{output_format}"
+    if output_file.exists() and not overwrite:
+        logger.error(f"{output_file} already exists. Specify --overwrite to overwrite.")
+        return
+    logger.info(f"Loading dataset from {input_file}.")
+    if input_format == "jsonl":
+        dataset = Dataset.from_json(str(input_file), keep_in_memory=True)
+    else:
+        assert input_format == "parquet"
+        dataset = Dataset.from_parquet(str(input_file), keep_in_memory=True)
+    process_dataset(
+        dataset,
+        output_file,
+        overwrite,
+        output_format,
+        max_seq_length=max_seq_length - 2,
+        num_proc=1,
+    )
 
 
 def main() -> None:
@@ -133,26 +158,17 @@ def main() -> None:
 
     input_files: list[Path] = sorted(list_input_files(args.input_path, args.input_format))
 
-    logger.info("Loading the dataset")
-    for input_file in tqdm(input_files):
-        output_file: Path = output_dir / f"{input_file.stem}.{args.output_format}"
-        if output_file.exists() and not args.overwrite:
-            logger.error(f"{output_file} already exists. Specify --overwrite to overwrite.")
-            continue
-        logger.info(f"Loading dataset from {input_file}.")
-        if args.input_format == "jsonl":
-            dataset = Dataset.from_json(str(input_file), keep_in_memory=True)
-        else:
-            assert args.input_format == "parquet"
-            dataset = Dataset.from_parquet(str(input_file), keep_in_memory=True)
-        process_file(
-            dataset,
-            output_file,
-            args.overwrite,
-            args.output_format,
-            max_seq_length=args.max_seq_length - 2,
-            num_proc=os.cpu_count() if args.num_proc == -1 else args.num_proc,
-        )
+    with ProcessPoolExecutor(max_workers=args.num_proc) as executor:
+        for input_file in tqdm(input_files):
+            executor.submit(
+                process_file,
+                input_file,
+                args.input_format,
+                output_dir,
+                args.output_format,
+                args.overwrite,
+                max_seq_length=args.max_seq_length,
+            )
 
     end_time = time.time()
     logger.info(f"Finished tokenizing the dataset. Elapsed time: {end_time - start_time} [sec]")
