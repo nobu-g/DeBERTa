@@ -259,6 +259,18 @@ class Fp16Optimizer:
 
         return grad_scale
 
+    def state_dict(self) -> dict:
+        state = {}
+        state["optimizer"] = self.optimizer.state_dict()
+        if self.loss_scaler:
+            state["loss_scaler"] = self.loss_scaler.state_dict()
+        return state
+
+    def load_state_dict(self, state: dict) -> None:
+        self.optimizer.load_state_dict(state["optimizer"])
+        if self.loss_scaler:
+            self.loss_scaler.load_state_dict(state["loss_scaler"])
+
 
 class ExpLossScaler:
     def __init__(self, init_scale=2**16, scale_interval=1000):

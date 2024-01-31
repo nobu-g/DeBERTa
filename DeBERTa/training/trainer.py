@@ -9,7 +9,7 @@
 import os
 import random
 import time
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from typing import Optional
 
 import numpy as np
@@ -40,7 +40,6 @@ def set_random_seed(seed, cpu_only=False):
 
 class TrainerState:
     def __init__(self, training_steps, name=None):
-        self.__dict__ = defaultdict(float)
         self.loss = 0.0
         self.examples = 0
         self.steps = 0
@@ -97,17 +96,16 @@ class DistributedTrainer:
         wandb_run,
         data_fn,
         loss_fn=None,
-        optimizer_fn=None,
         eval_fn=None,
         init_fn=None,
         update_fn=None,
         dump_interval=10000,
         name=None,
+        resume_path=None,
         **kwargs,
     ):
         """data_fn return tuples (training_dataset, training_steps, train_sampler, batch_scheduler), training_dataset is required
         loss_fn return the loss of current mini-batch and the size of the batch
-        optimizer_fn return the created optimizer
         eval_fn return metrics for model selection
         """
         self.__dict__.update(kwargs)
@@ -136,19 +134,32 @@ class DistributedTrainer:
 
         self.output_dir = output_dir
         self.init_fn = init_fn
-        self.trainer_state = TrainerState(self.training_steps, name=name)
+
+        if resume_path is not None:
+            checkpoint = torch.load(resume_path, map_location="cpu")
+        else:
+            checkpoint = None
+        if checkpoint is not None:
+            self.trainer_state = checkpoint["trainer_state"]
+            assert isinstance(self.trainer_state, TrainerState)
+            logger.info(f"Loaded trainer state: {self.trainer_state}")
+            missing_keys, unexpected_keys = model.load_state_dict(checkpoint["state_dict"], strict=False)
+            if missing_keys and (len(missing_keys) > 0):
+                logger.warning(f"Load discriminator with missing keys: {missing_keys}")
+            if unexpected_keys and (len(unexpected_keys) > 0):
+                logger.warning(f"Load discriminator with unexptected keys: {unexpected_keys}")
+        else:
+            self.trainer_state = TrainerState(self.training_steps, name=name)
         self.dump_interval = dump_interval
 
         self.model = self._setup_model(args, model)
         # self.model = FSDP(self.model)
         self.post_loss_fn = None
 
-        def _opt_fn(trainer, model, training_steps):
-            return create_xoptimizer(model, args, num_train_steps=training_steps)
-
-        optimizer_fn = optimizer_fn if optimizer_fn is not None else _opt_fn
-
-        self.optimizer = optimizer_fn(self, model, training_steps)
+        self.optimizer = create_xoptimizer(model, args, num_train_steps=training_steps)
+        if checkpoint is not None:
+            self.optimizer.load_state_dict(checkpoint["optimizer"])
+            logger.info(f"Loaded optimizer state: {self.optimizer}")
 
         def _loss_fn(trainer, model, batch):
             _, loss = model(**batch)
@@ -160,6 +171,7 @@ class DistributedTrainer:
         self.initialized = False
         self.update_fn = update_fn
         self.wandb_run: Optional[Run] = wandb_run
+        self.init_resume_step: int = getattr(args, "init_resume_step", 0)
 
     def initialize(self):
         set_random_seed(self.args.seed)
@@ -185,9 +197,11 @@ class DistributedTrainer:
                 pin_memory=False,
             )
             torch.cuda.empty_cache()
-            for _step, batch in enumerate(AsyncDataLoader(train_dataloader, 100)):
+            for step, batch in enumerate(AsyncDataLoader(train_dataloader, buffer_size=100)):
                 if self.trainer_state.steps >= self.training_steps:
                     break
+                if step < self.init_resume_step:
+                    continue
                 bs_scale = 1
                 batch = batch_to(batch, self.device)
                 self._train_step(batch, bs_scale)
@@ -199,12 +213,16 @@ class DistributedTrainer:
 
     def save_model(self, args, checkpoint_dir, chk_postfix, model, optimizer):
         save_path = os.path.join(checkpoint_dir, f"pytorch.model-{chk_postfix}.bin")
+        if args.rank > 0:
+            return save_path
         if hasattr(model, "module"):
             model_state = OrderedDict([(n, p) for n, p in model.module.state_dict().items()])
         else:
             model_state = OrderedDict([(n, p) for n, p in model.state_dict().items()])
-        if args.rank < 1:
-            torch.save(model_state, save_path)
+        torch.save(
+            {"state_dict": model_state, "optimizer": optimizer.state_dict(), "trainer_state": self.trainer_state},
+            save_path,
+        )
         return save_path
 
     def _eval_model(self, with_checkpoint=True):

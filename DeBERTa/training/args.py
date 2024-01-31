@@ -44,6 +44,13 @@ def get_args():
         help="Total number of training epochs to perform.",
     )
 
+    group.add_argument(
+        "--init_resume_step",
+        default=0,
+        type=int,
+        help="The initial step to resume training.",
+    )
+
     group.add_argument("--seed", type=int, default=1234, help="random seed for initialization")
 
     group.add_argument(

@@ -288,7 +288,7 @@ class RTDTask(Task):
             model = RTDModel.load_model(*wargs, **kwargs)
             if self.args.init_generator is not None:
                 logger.info(f"Load generator from {self.args.init_generator}")
-                generator = torch.load(self.args.init_generator, map_location="cpu")
+                generator = torch.load(self.args.init_generator, map_location="cpu")["state_dict"]
                 missing_keys, unexpected_keys = model.generator.load_state_dict(generator, strict=False)
                 if missing_keys and (len(missing_keys) > 0):
                     logger.warning(f"Load generator with missing keys: {missing_keys}")
@@ -296,7 +296,7 @@ class RTDTask(Task):
                     logger.warning(f"Load generator with unexptected keys: {unexpected_keys}")
             if self.args.init_discriminator is not None:
                 logger.info(f"Load discriminator from {self.args.init_discriminator}")
-                discriminator = torch.load(self.args.init_discriminator, map_location="cpu")
+                discriminator = torch.load(self.args.init_discriminator, map_location="cpu")["state_dict"]
                 missing_keys, unexpected_keys = model.discriminator.load_state_dict(discriminator, strict=False)
                 if missing_keys and (len(missing_keys) > 0):
                     logger.warning(f"Load discriminator with missing keys: {missing_keys}")
@@ -327,6 +327,7 @@ class RTDTask(Task):
                     eval_fn=eval_fn,
                     dump_interval=args.dump_interval,
                     name="G",
+                    resume_path=args.init_generator,
                 )
             else:
                 trainer = DistributedTrainer(
@@ -339,6 +340,7 @@ class RTDTask(Task):
                     loss_fn=loss_fn,
                     eval_fn=eval_fn,
                     dump_interval=args.dump_interval,
+                    resume_path=args.init_generator,
                 )
             trainer.train()
 
@@ -448,6 +450,7 @@ class RTDTask(Task):
             eval_fn=eval_fn,
             dump_interval=args.dump_interval,
             name="D",
+            resume_path=args.init_discriminator,
         )
         disc_trainer.initialize()
 
