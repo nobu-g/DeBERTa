@@ -26,7 +26,7 @@ CORPUS_TO_NUM_EXAMPLES: dict[str, int] = {
     "ja_wiki": 2_848_756,
     "ja_cc": 267_019_300,
     "en_wiki": 11_101_940,
-    "en_pile": 303_448_037,
+    "en_pile": 270_325_237,
     "code_stack": 20_907_722,
 }
 
