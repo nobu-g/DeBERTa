@@ -43,7 +43,7 @@ def xadam_factory(args, training_steps=None):
     return optimizer_fn
 
 
-def create_xoptimizer(model, args, num_train_steps=None, no_decay=None):
+def create_xoptimizer(model, args, num_train_steps=None, no_decay=None) -> Fp16Optimizer:
     if no_decay is None:
         no_decay = ["bias", "LayerNorm.weight"]
     if args.fp16:

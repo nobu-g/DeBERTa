@@ -37,7 +37,7 @@ output_dir=${HOME}/work/DeBERTa/output
 task=RTD
 
 init=$1
-tag="${init}$(date -u +%Y-%m-%d-%H-%M)"
+tag="${init}-$(date -u +%Y-%m-%d-%H-%M)"
 case ${init,,} in
 deberta-v3-xsmall-continue)
   # wget https://huggingface.co/microsoft/deberta-v3-xsmall/resolve/main/pytorch_model.generator.bin
@@ -125,4 +125,5 @@ python -m DeBERTa.apps.run --model_config config.json \
   --vocab_type spm \
   --world_size 1 \
   --workers 2 \
+  --seed 42 \
   --output_dir "${output_dir}/${tag}/${task}" ${parameters}
