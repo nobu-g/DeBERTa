@@ -86,7 +86,7 @@ deberta-v3-base)
   --learning_rate 3e-4 \
   --epsilon 1e-6 \
   --adam_beta1 0.9 \
-  --adam_beta2 0.98 \
+  --adam_beta2 0.999 \
   --max_grad_norm 0.5 \
   --train_batch_size 1600 \
   --eval_batch_size 64 \
@@ -101,7 +101,7 @@ deberta-v3-base-continue)
   --learning_rate 3e-4 \
   --epsilon 1e-6 \
   --adam_beta1 0.9 \
-  --adam_beta2 0.98 \
+  --adam_beta2 0.999 \
   --max_grad_norm 0.5 \
   --train_batch_size 800 \
   --eval_batch_size 64 \
