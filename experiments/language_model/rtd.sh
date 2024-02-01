@@ -103,7 +103,7 @@ deberta-v3-base-continue)
   --adam_beta1 0.9 \
   --adam_beta2 0.999 \
   --max_grad_norm 0.5 \
-  --train_batch_size 800 \
+  --train_batch_size 1600 \
   --eval_batch_size 64 \
   --init_generator ${output_dir}/deberta-v3-base2024-01-30-16-28/RTD/generator/pytorch.model-000500.bin \
   --init_discriminator ${output_dir}/deberta-v3-base2024-01-30-16-28/RTD/discriminator/pytorch.model-000500.bin \
