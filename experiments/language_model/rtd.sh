@@ -83,14 +83,14 @@ deberta-v3-base)
   parameters=" --num_train_epochs 2 \
   --model_config rtd_base.json \
   --warmup 10000 \
-  --learning_rate 3e-4 \
+  --learning_rate 1e-4 \
   --epsilon 1e-6 \
   --adam_beta1 0.9 \
   --adam_beta2 0.999 \
   --max_grad_norm 0.5 \
-  --train_batch_size 1600 \
+  --train_batch_size 2400 \
   --eval_batch_size 64 \
-  --accumulative_update 2 \
+  --accumulative_update 3 \
   --decoupled_training True \
   --fp16 True "
   ;;
@@ -98,17 +98,17 @@ deberta-v3-base-continue)
   parameters=" --num_train_epochs 2 \
   --model_config rtd_base.json \
   --warmup 10000 \
-  --learning_rate 3e-4 \
+  --learning_rate 1e-4 \
   --epsilon 1e-6 \
   --adam_beta1 0.9 \
   --adam_beta2 0.999 \
   --max_grad_norm 0.5 \
-  --train_batch_size 1600 \
+  --train_batch_size 2400 \
   --eval_batch_size 64 \
   --init_generator ${output_dir}/deberta-v3-base2024-01-30-16-28/RTD/generator/pytorch.model-000500.bin \
   --init_discriminator ${output_dir}/deberta-v3-base2024-01-30-16-28/RTD/discriminator/pytorch.model-000500.bin \
   --init_resume_step 500 \
-  --accumulative_update 2 \
+  --accumulative_update 3 \
   --decoupled_training True \
   --fp16 True "
   ;;
