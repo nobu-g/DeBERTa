@@ -18,6 +18,7 @@ from collections.abc import Sequence
 
 import numpy as np
 import torch
+import wandb
 from torch.utils.data import DataLoader
 
 from ..data import (
@@ -62,7 +63,7 @@ def create_model(args, num_labels, model_class_fn):
     return model
 
 
-def train_model(args, model, device, train_data, eval_data, run_eval_fn, train_fn=None, loss_fn=None):
+def train_model(args, model, device, train_data, eval_data, wandb_run, run_eval_fn, train_fn=None, loss_fn=None):
     num_train_steps = int(len(train_data) * args.num_train_epochs / args.train_batch_size)
     logger.info("  Training batch size = %d", args.train_batch_size)
     logger.info("  Num steps = %d", num_train_steps)
@@ -127,6 +128,7 @@ def train_model(args, model, device, train_data, eval_data, run_eval_fn, train_f
             args.output_dir,
             model,
             device,
+            wandb_run,
             data_fn,
             loss_fn=loss_fn,
             eval_fn=eval_fn,
@@ -403,13 +405,18 @@ def main(args):
         run_eval(args, model, device, eval_data, prefix=args.tag)
 
     if args.do_train:
-        train_fn = task.get_train_fn(args, model)
+        if args.rank == 0:
+            wandb_run = wandb.init(name=args.tag)
+        else:
+            wandb_run = None
+        train_fn = task.get_train_fn(args, model, wandb_run)
         train_model(
             args,
             model,
             device,
             train_data,
             eval_data,
+            wandb_run,
             run_eval_fn,
             loss_fn=loss_fn,
             train_fn=train_fn,

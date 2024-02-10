@@ -304,7 +304,7 @@ class RTDTask(Task):
 
         return partial_class
 
-    def get_train_fn(self, args, model):
+    def get_train_fn(self, args, model, wandb_run):
         def train_fn(args, model, device, data_fn, eval_fn, loss_fn):
             if args.decoupled_training:
                 gen_args = copy.deepcopy(args)
@@ -313,12 +313,13 @@ class RTDTask(Task):
                 with open(os.path.join(gen_args.checkpoint_dir, "model_config.json"), "w") as fs:
                     fs.write(model.config.generator.to_json_string() + "\n")
                 shutil.copy(args.vocab_path, gen_args.checkpoint_dir)
-                loss_fn = self.get_decoupled_loss_fn(args, model, data_fn, device, args.num_training_steps)
+                loss_fn = self.get_decoupled_loss_fn(args, model, data_fn, device, wandb_run, args.num_training_steps)
                 trainer = DistributedTrainer(
                     gen_args,
                     gen_args.output_dir,
                     model.generator,
                     device,
+                    wandb_run,
                     data_fn,
                     loss_fn=loss_fn,
                     eval_fn=eval_fn,
@@ -331,6 +332,7 @@ class RTDTask(Task):
                     args.output_dir,
                     model,
                     device,
+                    wandb_run,
                     data_fn,
                     loss_fn=loss_fn,
                     eval_fn=eval_fn,
@@ -412,7 +414,7 @@ class RTDTask(Task):
 
         return eval_fn
 
-    def get_decoupled_loss_fn(self, args, model, data_fn, device, num_training_steps):
+    def get_decoupled_loss_fn(self, args, model, data_fn, device, wandb_run, num_training_steps):
         rand = random.Random(0)
 
         def eval_fn(trainer, model, device, tag):
@@ -438,6 +440,7 @@ class RTDTask(Task):
             args.output_dir,
             model.discriminator,
             device,
+            wandb_run,
             data_fn,
             loss_fn=d_loss_fn,
             eval_fn=eval_fn,
