@@ -51,11 +51,12 @@ def create_xoptimizer(model, args, num_train_steps=None, no_decay=None) -> Fp16O
     else:
         loss_scaler = None
 
-    distributed_optimizer = getattr(args, "distributed_optimizer", True)
-    max_distributed_groups = getattr(args, "max_distributed_groups", 1000000)
+    max_distributed_groups = 1000000
     world_size = get_world_size()
     if world_size <= 1:
         distributed_optimizer = False
+    else:
+        distributed_optimizer = True
 
     _no_decay = [x.strip() for x in getattr(args, "no_decay", "").split("|") if len(x.strip()) > 0]
     if len(_no_decay) > 0:
@@ -131,7 +132,7 @@ def create_xoptimizer(model, args, num_train_steps=None, no_decay=None) -> Fp16O
         else:
             key += f"{p.dtype!s}-d"
         type_groups[key].append((n, p))
-    param_groups = []
+    param_groups: list[dict] = []
     for key, params in type_groups.items():
         wd_theta = 0
         weight_decay = args.weight_decay

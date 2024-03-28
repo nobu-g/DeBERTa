@@ -131,6 +131,7 @@ class DistributedTrainer:
                 (len(train_data) + self.args.train_batch_size - 1) // self.args.train_batch_size * self.training_epochs,
             )
         self.training_steps = training_steps
+        self.training_steps_per_epoch = (len(train_data) + self.args.train_batch_size - 1) // self.args.train_batch_size
 
         self.output_dir = output_dir
         self.init_fn = init_fn
@@ -197,10 +198,11 @@ class DistributedTrainer:
                 pin_memory=False,
             )
             torch.cuda.empty_cache()
-            for step, batch in enumerate(AsyncDataLoader(train_dataloader, buffer_size=100)):
+            for local_step, batch in enumerate(AsyncDataLoader(train_dataloader, buffer_size=100)):
                 if self.trainer_state.steps >= self.training_steps:
                     break
-                if step < self.init_resume_step:
+                global_step = local_step + _n_epoch * self.training_steps_per_epoch
+                if global_step < self.init_resume_step:
                     continue
                 bs_scale = 1
                 batch = batch_to(batch, self.device)

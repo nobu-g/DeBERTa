@@ -29,9 +29,7 @@ from ..data import (
 )
 from ..deberta import load_vocab, tokenizers
 from ..optims import get_args as get_optims_args
-from ..sift import AdversarialLearner, hook_sift_layer
 from ..training import (
-    DistributedTrainer,
     batch_to,
     initialize_distributed,
     kill_children,
@@ -72,8 +70,8 @@ def train_model(
     eval_data,
     wandb_run,
     run_eval_fn,
-    train_fn=None,
-    loss_fn=None,
+    train_fn,
+    loss_fn,
 ):
     total_examples = len(train_data)
     num_train_steps = int(total_examples * args.num_train_epochs / args.train_batch_size)
@@ -94,62 +92,6 @@ def train_model(
         )
         eval_metric = np.mean([v[0] for k, v in results.items() if "train" not in k])
         return eval_metric
-
-    def _loss_fn(trainer, model, data):
-        output = model(**data)
-        loss = output["loss"]
-        return loss.mean(), data["input_ids"].size(0)
-
-    def get_adv_loss_fn():
-        adv_modules = hook_sift_layer(
-            model,
-            hidden_size=model.config.hidden_size,
-            learning_rate=args.vat_learning_rate,
-            init_perturbation=args.vat_init_perturbation,
-        )
-        adv = AdversarialLearner(model, adv_modules)
-
-        def adv_loss_fn(trainer, model, data):
-            output = model(**data)
-            logits = output["logits"]
-            loss = output["loss"]
-            if isinstance(logits, Sequence):
-                logits = logits[-1]
-
-            if args.vat_lambda > 0:
-
-                def pert_logits_fn(model, **data):
-                    o = model(**data)
-                    logits = o["logits"]
-                    if isinstance(logits, Sequence):
-                        logits = logits[-1]
-                    return logits
-
-                loss += adv.loss(logits, pert_logits_fn, loss_fn=args.vat_loss_fn, **data) * args.vat_lambda
-
-            return loss.mean(), data["input_ids"].size(0)
-
-        return adv_loss_fn
-
-    def _train_fn(args, model, device, data_fn, eval_fn, loss_fn):
-        if loss_fn is None:
-            loss_fn = get_adv_loss_fn() if args.vat_lambda > 0 else _loss_fn
-
-        trainer = DistributedTrainer(
-            args,
-            args.output_dir,
-            model,
-            device,
-            wandb_run,
-            data_fn,
-            loss_fn=loss_fn,
-            eval_fn=eval_fn,
-            dump_interval=args.dump_interval,
-        )
-        trainer.train()
-
-    if train_fn is None:
-        train_fn = _train_fn
 
     train_fn(args, model, device, data_fn=data_fn, eval_fn=eval_fn, loss_fn=loss_fn)
 
@@ -402,15 +344,17 @@ def main(args):
     label_list = task.get_labels()
 
     eval_data: list[EvalData] = task.eval_data(max_seq_len=args.max_seq_length)
-    logger.info("  Evaluation batch size = %d", args.eval_batch_size)
+    logger.info("Evaluation batch size = %d", args.eval_batch_size)
     if args.do_predict:
         test_data = task.test_data(max_seq_len=args.max_seq_length)
-        logger.info("  Prediction batch size = %d", args.predict_batch_size)
+        logger.info("Prediction batch size = %d", args.predict_batch_size)
 
     if args.do_train:
         train_data: Dataset = task.train_data(max_seq_len=args.max_seq_length)
+        logger.info("Train dataset loaded")
     model_class_fn = task.get_model_class_fn()
     model = create_model(args, len(label_list), model_class_fn)
+    logger.info("Model loaded")
     if args.do_train:
         with open(os.path.join(args.output_dir, "model_config.json"), "w", encoding="utf-8") as fs:
             fs.write(model.config.to_json_string() + "\n")
@@ -421,7 +365,6 @@ def main(args):
         return 0
     model.to(device)
     run_eval_fn = task.get_eval_fn()
-    loss_fn = task.get_loss_fn(args)
     if run_eval_fn is None:
         run_eval_fn = run_eval
 
@@ -433,7 +376,6 @@ def main(args):
             wandb_run = wandb.init(name=args.tag)
         else:
             wandb_run = None
-        train_fn = task.get_train_fn(args, model, wandb_run)
         train_model(
             args,
             model,
@@ -442,8 +384,8 @@ def main(args):
             eval_data,
             wandb_run,
             run_eval_fn,
-            loss_fn=loss_fn,
-            train_fn=train_fn,
+            loss_fn=task.get_loss_fn(args),
+            train_fn=task.get_train_fn(args, model, wandb_run),
         )
 
     if args.do_predict:

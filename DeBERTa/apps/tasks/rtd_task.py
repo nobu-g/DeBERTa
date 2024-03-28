@@ -14,6 +14,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+import torch.nn as nn
 from datasets import Dataset, disable_caching
 from torch.utils.data import DataLoader
 
@@ -52,39 +53,39 @@ class RTDModel(NNModule):
         self.generator = MaskedLanguageModel(config.generator)
         self.discriminator = ReplacedTokenDetectionModel(config.discriminator)
 
-        self.generator._register_load_state_dict_pre_hook(self._pre_load_hook)
-        self.discriminator._register_load_state_dict_pre_hook(self._pre_load_hook)
+        # self.generator._register_load_state_dict_pre_hook(self._pre_load_hook)
+        # self.discriminator._register_load_state_dict_pre_hook(self._pre_load_hook)
 
         self.share_embedding = getattr(config, "embedding_sharing", "none").lower()
         if self.share_embedding == "gdes":  # Gradient-disentangled weight/embedding sharing
-            word_bias = torch.zeros_like(self.discriminator.deberta.embeddings.word_embeddings.weight)
-            word_bias = torch.nn.Parameter(word_bias)
-            position_bias = torch.zeros_like(self.discriminator.deberta.embeddings.position_embeddings.weight)
-            position_bias = torch.nn.Parameter(position_bias)
+            word_bias = nn.Parameter(torch.zeros_like(self.discriminator.deberta.embeddings.word_embeddings.weight))
+            position_bias = nn.Parameter(
+                torch.zeros_like(self.discriminator.deberta.embeddings.position_embeddings.weight)
+            )
             delattr(self.discriminator.deberta.embeddings.word_embeddings, "weight")
             self.discriminator.deberta.embeddings.word_embeddings.register_parameter("_weight", word_bias)
             delattr(self.discriminator.deberta.embeddings.position_embeddings, "weight")
             self.discriminator.deberta.embeddings.position_embeddings.register_parameter("_weight", position_bias)
         self.register_discriminator_fw_hook()
 
-    def _pre_load_hook(
-        self,
-        state_dict,
-        prefix,
-        local_metadata,
-        strict,
-        missing_keys,
-        unexpected_keys,
-        error_msgs,
-    ):
-        bert_prefix = prefix + "bert."
-        deberta_prefix = prefix + "deberta."
-        for k in list(state_dict.keys()):
-            if k.startswith(bert_prefix):
-                nk = deberta_prefix + k[len(bert_prefix) :]
-                value = state_dict[k]
-                del state_dict[k]
-                state_dict[nk] = value
+    # def _pre_load_hook(
+    #     self,
+    #     state_dict,
+    #     prefix,
+    #     local_metadata,
+    #     strict,
+    #     missing_keys,
+    #     unexpected_keys,
+    #     error_msgs,
+    # ):
+    #     bert_prefix = prefix + "bert."
+    #     deberta_prefix = prefix + "deberta."
+    #     for k in list(state_dict.keys()):
+    #         if k.startswith(bert_prefix):
+    #             nk = deberta_prefix + k[len(bert_prefix) :]
+    #             value = state_dict[k]
+    #             del state_dict[k]
+    #             state_dict[nk] = value
 
     def forward(self, **kwargs):
         return self.generator_fw(**kwargs)
@@ -286,22 +287,22 @@ class RTDTask(Task):
     def get_model_class_fn(self):
         def partial_class(*wargs, **kwargs):
             model = RTDModel.load_model(*wargs, **kwargs)
-            if self.args.init_generator is not None:
-                logger.info(f"Load generator from {self.args.init_generator}")
-                generator = torch.load(self.args.init_generator, map_location="cpu")["state_dict"]
-                missing_keys, unexpected_keys = model.generator.load_state_dict(generator, strict=False)
-                if missing_keys and (len(missing_keys) > 0):
-                    logger.warning(f"Load generator with missing keys: {missing_keys}")
-                if unexpected_keys and (len(unexpected_keys) > 0):
-                    logger.warning(f"Load generator with unexptected keys: {unexpected_keys}")
-            if self.args.init_discriminator is not None:
-                logger.info(f"Load discriminator from {self.args.init_discriminator}")
-                discriminator = torch.load(self.args.init_discriminator, map_location="cpu")["state_dict"]
-                missing_keys, unexpected_keys = model.discriminator.load_state_dict(discriminator, strict=False)
-                if missing_keys and (len(missing_keys) > 0):
-                    logger.warning(f"Load discriminator with missing keys: {missing_keys}")
-                if unexpected_keys and (len(unexpected_keys) > 0):
-                    logger.warning(f"Load discriminator with unexptected keys: {unexpected_keys}")
+            # if self.args.init_generator is not None:
+            #     logger.info(f"Load generator from {self.args.init_generator}")
+            #     generator = torch.load(self.args.init_generator, map_location="cpu")["state_dict"]
+            #     missing_keys, unexpected_keys = model.generator.load_state_dict(generator, strict=False)
+            #     if missing_keys and (len(missing_keys) > 0):
+            #         logger.warning(f"Load generator with missing keys: {missing_keys}")
+            #     if unexpected_keys and (len(unexpected_keys) > 0):
+            #         logger.warning(f"Load generator with unexptected keys: {unexpected_keys}")
+            # if self.args.init_discriminator is not None:
+            #     logger.info(f"Load discriminator from {self.args.init_discriminator}")
+            #     discriminator = torch.load(self.args.init_discriminator, map_location="cpu")["state_dict"]
+            #     missing_keys, unexpected_keys = model.discriminator.load_state_dict(discriminator, strict=False)
+            #     if missing_keys and (len(missing_keys) > 0):
+            #         logger.warning(f"Load discriminator with missing keys: {missing_keys}")
+            #     if unexpected_keys and (len(unexpected_keys) > 0):
+            #         logger.warning(f"Load discriminator with unexptected keys: {unexpected_keys}")
             return model
 
         return partial_class

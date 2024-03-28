@@ -105,9 +105,9 @@ deberta-v3-base-continue)
   --max_grad_norm 0.5 \
   --train_batch_size 2400 \
   --eval_batch_size 64 \
-  --init_generator ${output_dir}/deberta-v3-base2024-01-30-16-28/RTD/generator/pytorch.model-000500.bin \
-  --init_discriminator ${output_dir}/deberta-v3-base2024-01-30-16-28/RTD/discriminator/pytorch.model-000500.bin \
-  --init_resume_step 500 \
+  --init_generator ${output_dir}/deberta-v3-base-continue-2024-03-14-15-51/RTD/generator/pytorch.model-405000.bin \
+  --init_discriminator ${output_dir}/deberta-v3-base-continue-2024-03-14-15-51/RTD/discriminator/pytorch.model-405000.bin \
+  --init_resume_step 405000 \
   --accumulative_update 3 \
   --decoupled_training True \
   --fp16 True "
@@ -144,6 +144,6 @@ python -m DeBERTa.apps.run --model_config config.json \
   --vocab_path "${data_dir}/spm/code20K_en40K_ja60K.ver2.2.model" \
   --vocab_type spm \
   --world_size 1 \
-  --workers 2 \
+  --workers 4 \
   --seed 42 \
   --output_dir "${output_dir}/${tag}/${task}" ${parameters}
